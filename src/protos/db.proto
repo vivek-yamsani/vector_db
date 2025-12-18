@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package vector_db;
+
+service vectorService {
+
+  rpc CreateCollection (CreateCollectionRequest) returns (EmptyResponse);
+  rpc DeleteCollection (DeleteCollectionRequest) returns (EmptyResponse);
+
+  rpc AddIndex(AddIndexRequest) returns (EmptyResponse);
+  rpc GetIndexParams(IndexParamsRequest) returns (IndexParamsResponse);
+
+  rpc Upsert (UpsertRequest) returns (EmptyResponse);
+  rpc StreamUpsert (stream UpsertRequest) returns (EmptyResponse);
+  rpc DeleteVector (DelVectorRequest) returns (EmptyResponse);
+  rpc Search (SearchRequest) returns (SearchResponse);
+}
+
+// enums
+enum DistanceType {
+  COSINE = 0;
+  EUCLIDEAN = 1;
+  INNER_PRODUCT = 2;
+}
+
+enum IndexType {
+  IVF_FLAT = 0;
+  HNSW = 1;
+}
+
+
+// Data Models
+message Metadata
+{
+  map<string, string> map = 1;
+}
+
+message Vector {
+  uint64 id = 1;
+  repeated float values = 2;   // The core data
+  optional Metadata metadata = 3; // For Level 3 filtering
+}
+
+// Request Objects
+message CreateCollectionRequest {
+  string name = 1;
+  int32 dimension = 2; // e.g., 1536
+}
+
+message DeleteCollectionRequest{
+  string collectionName = 1;
+}
+
+message UpsertRequest {
+  string collectionName = 1;
+  repeated Vector vectors = 2; // Batch insert support
+}
+
+message SearchRequest {
+  string collectionName = 1;
+  repeated float queryVector = 2;
+  int32 top_k = 3; // How many neighbors to return?
+}
+
+message AddIndexRequest {
+  string collectionName = 1;
+  IndexType index = 2;
+  string indexName = 3;
+  oneof params {
+    HNSWParams hnswParams = 20;
+  };
+}
+
+message HNSWParams {
+  DistanceType distanceType = 1;
+  int32 m = 2;
+  int32 efConstruction = 3;
+  int32 efSearch = 4;
+}
+
+message DelVectorRequest {
+  string collection_name = 1;
+  repeated uint64 id = 2;
+}
+
+message IndexParamsRequest {
+  string collectionName = 1;
+  string indexName = 2;
+}
+
+message IndexParamsResponse {
+  oneof params {
+    HNSWParams hnswParams = 1;
+  }
+}
+
+// Response
+message SearchResponse {
+  message ScoredVector {
+    float score = 1; // Distance value
+    Vector vector = 2;
+  }
+  repeated ScoredVector results = 1;
+}
+
+message EmptyResponse{}
