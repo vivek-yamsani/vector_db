@@ -2,14 +2,14 @@
 // Created by Vivek Yamsani on 30/11/25.
 //
 
-#include "server.h"
-#include "util.h"
+#include "grpc_server/server.h"
+#include "grpc_server/util.h"
+#include "logger.h"
 
 using namespace std::chrono_literals;
 
 namespace vector_db
 {
-init_logger logger( "server" );
 inline uint8_t server::num_of_thread_ = std::thread::hardware_concurrency();
 
 struct rpc_facade
@@ -441,6 +441,7 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
 server::server( std::string address, int _num_cq_threads )
     : address_( std::move( address ) )
 {
+  static init_logger logger( "server" );
   if ( _num_cq_threads != 0 )
     num_of_thread_ = _num_cq_threads;
   db_ptr_ = std::make_unique< database >();

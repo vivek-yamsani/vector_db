@@ -2,12 +2,12 @@
 // Created by Vivek Yamsani on 28/11/25.
 //
 #pragma once
+#include <spdlog/logger.h>
 #include <memory>
 #include <shared_mutex>
 #include <unordered_map>
 
 #include "core/collection.h"
-#include "core/log.h"
 #include "core/utils/util.h"
 
 namespace vector_db

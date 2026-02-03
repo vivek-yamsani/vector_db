@@ -1,0 +1,4 @@
+requirements:
+  - "spdlog/1.16.0"
+  - "gtest/1.17.0"
+  - "grpc/1.72.0"

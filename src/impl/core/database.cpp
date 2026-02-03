@@ -2,6 +2,7 @@
 // Implementation for vector_db::database
 //
 #include "core/database.h"
+#include "logger.h"
 
 #include "spdlog/spdlog.h"
 
@@ -10,9 +11,11 @@ namespace vector_db
 
 using utils::is_collection_name_valid;
 
-init_logger db_logger( "db" );
-
-database::database() { logger_ = spdlog::get( "db" ); }
+database::database()
+{
+  static init_logger db_logger( "db" );
+  logger_ = spdlog::get( "db" );
+}
 
 status database::add_vectors( const std::string& collection_name, std::vector< std::pair< id_t, float_vector > > vectors )
 {

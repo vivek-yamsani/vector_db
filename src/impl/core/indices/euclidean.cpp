@@ -29,8 +29,8 @@ bool index::search_for_top_k( const float_vector& query_vector, unsigned int k, 
     dist_vec.reserve( vectors_.size() );
     for ( const auto& [ id, vector ] : vectors_ )
     {
-      auto dist_func = *distance::euclidean::instance();
-      dist_vec.emplace_back( dist_func( query_vector, *vector.get() ), id );
+      const auto dist_func = distance::euclidean::get_instance();
+      dist_vec.emplace_back( dist_func->compute( query_vector, *vector.get() ), id );
     }
 
     std::sort( dist_vec.begin(), dist_vec.end() );

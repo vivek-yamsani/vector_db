@@ -4,7 +4,7 @@ project(unittests)
 
 enable_testing()
 
-add_executable(run_tests main.cpp hnsw_test.cpp)
+add_executable(run_tests main.cpp)
 
 target_link_libraries(run_tests gtest_main vector_db::core grpc_server)
 

@@ -22,7 +22,7 @@ public:
       return true;
     }();
     auto logger = std::make_shared< spdlog::async_logger >(
-        std::move( name ), get_sink(), spdlog::thread_pool(), spdlog::async_overflow_policy::block );
+        std::move( name ), get_sink(), spdlog::thread_pool(), spdlog::async_overflow_policy::discard_new );
     spdlog::register_logger( logger );
     logger->set_pattern( "[%H:%M:%S:%e][thread %t][%=8l][%=6n] %v" );
     spdlog::flush_every( std::chrono::seconds( 1 ) );
