@@ -52,7 +52,7 @@ target_link_libraries(grpc_server PUBLIC
         gRPC::grpc++
         gRPC::grpc++_reflection
         protobuf::libprotobuf
-        PRIVATE logger
+        PRIVATE configuration
 )
 
 target_include_directories(grpc_server PUBLIC

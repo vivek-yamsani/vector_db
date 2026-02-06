@@ -1,0 +1,20 @@
+[main]
+log_level = "debug"
+
+[core]
+log_level = "debug"
+
+[server]
+threads = 4
+port = 5051
+db_worker_pool_size = 10
+log_level = "debug"
+
+[logger]
+log_directory = "logs"
+log_filename = "vector_db.log"
+max_file_size_mb = 30
+max_files = 3
+thread_pool_queue_size = 8192
+thread_pool_threads = 2
+flush_interval_seconds = 1

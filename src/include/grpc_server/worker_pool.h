@@ -2,11 +2,10 @@
 // Created by Vivek Yamsani on 03/12/25.
 //
 #pragma once
-#include <spdlog/spdlog.h>
 #include <condition_variable>
 #include <functional>
 #include <thread>
-#include "logger.h"
+#include "logger/logger.h"
 
 namespace vector_db
 {
@@ -19,7 +18,7 @@ class worker_pool
   std::mutex mutex_;
   std::condition_variable cv_;
   std::atomic< bool > stopped{ false };
-  std::shared_ptr< spdlog::logger > logger_;
+  std::shared_ptr< details::logger_impl > logger_;
 
   void worker_thread()
   {
@@ -40,13 +39,14 @@ class worker_pool
       }
       catch ( const std::exception& e )
       {
-        std::cerr << e.what() << std::endl;
+        logger_->error( "Worker thread exception: {}", e.what() );
       }
     }
   }
 
   void init()
   {
+    logger_ = logger_factory::create( "db_wrk_pool" );
     logger_->info( "Starting {} DB worker threads", num_threads_ );
     for ( size_t i = 0; i < num_threads_; ++i )
       threads_.emplace_back( [ this ]() { worker_thread(); } );
@@ -55,16 +55,19 @@ class worker_pool
 public:
   worker_pool()
   {
-    static init_logger logger( "db_wrk_pool" );
     num_threads_ = std::thread::hardware_concurrency();
     init();
-    logger_ = spdlog::get( "db_wrk_pool" );
   }
 
   explicit worker_pool( const size_t num_threads )
   {
     num_threads_ = num_threads;
     init();
+  }
+
+  ~worker_pool()
+  {
+    shutdown();
   }
 
   void submit( cb task )

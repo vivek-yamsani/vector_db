@@ -3,15 +3,14 @@
 //
 
 #include "grpc_server/server.h"
+#include "configuration/provider.h"
 #include "grpc_server/util.h"
-#include "logger.h"
+#include "logger/logger.h"
 
 using namespace std::chrono_literals;
 
 namespace vector_db
 {
-inline uint8_t server::num_of_thread_ = std::thread::hardware_concurrency();
-
 struct rpc_facade
 {
   virtual ~rpc_facade() = default;
@@ -23,7 +22,7 @@ template< typename derived_t, typename request_t, typename response_t >
 struct rpc_base : public rpc_facade
 {
   grpc::ServerContext server_ctx_;
-  std::shared_ptr< spdlog::logger > logger_;
+  std::shared_ptr< details::logger_impl > logger_;
   vectorService::AsyncService* service_{ nullptr };
   grpc::ServerCompletionQueue* cq_{ nullptr };
   database* db_ptr_{ nullptr };
@@ -50,7 +49,7 @@ struct rpc_base : public rpc_facade
       , db_ptr_( db )
       , db_worker_pool_( pool )
   {
-    logger_ = spdlog::get( "server" );
+    logger_ = logger_factory::create( "server" );
   }
   ~rpc_base() override = default;
   virtual void do_delete() { delete this; }
@@ -123,7 +122,7 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
           }
           catch ( std::exception& e )
           {
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Create collection error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
           logger_->info< int >( "Create collection response: code {}", status_.error_code() );
@@ -163,7 +162,7 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
           }
           catch ( std::exception& e )
           {
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Delete collection error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
           responder.Finish( response_, status_, this );
@@ -212,7 +211,7 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
           }
           catch ( std::exception& e )
           {
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Upsert error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
           responder.Finish( response_, status_, this );
@@ -262,7 +261,7 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
           }
           catch ( std::exception& e )
           {
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Get nearest k error: {}", e.what() );
           }
 
           responder.Finish( response_, _grpc_status, this );
@@ -330,7 +329,7 @@ struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, U
           }
           catch ( std::exception& e )
           {
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Stream upsert error: {}", e.what() );
           }
         } );
   }
@@ -345,6 +344,7 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
       : rpc_base( s, q, db, pool )
       , reader( &server_ctx_ )
   {
+    service_->RequestDeleteVector( &server_ctx_, &request_, &reader, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
@@ -373,7 +373,7 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
           catch ( std::exception& e )
           {
             handle_unknown_error();
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Delete vector error: {}", e.what() );
           }
         } );
   }
@@ -388,6 +388,7 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
       : rpc_base( s, q, db, pool )
       , reader( &server_ctx_ )
   {
+    service_->RequestAddIndex( &server_ctx_, &request_, &reader, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
@@ -432,21 +433,27 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
           catch ( std::exception& e )
           {
             handle_unknown_error();
-            std::cerr << e.what() << std::endl;
+            logger_->error( "Add index error: {}", e.what() );
           }
         } );
   }
 };
 
-server::server( std::string address, int _num_cq_threads )
-    : address_( std::move( address ) )
+server::server()
 {
-  static init_logger logger( "server" );
-  if ( _num_cq_threads != 0 )
-    num_of_thread_ = _num_cq_threads;
+  const auto config_provider_ = config_provider::get_instance();
+
+  num_of_thread_ = config_provider_->get_int( "server", "threads" ).value_or( 4 );
+  const auto ip = config_provider_->get_string( "server", "ip" ).value_or( "0.0.0.0" );
+  const auto port = config_provider_->get_int( "server", "port" ).value_or( 50051 );
+  const auto db_worker_pool_size = config_provider_->get_int( "server", "db_worker_pool_size" ).value_or( 4 );
+  const auto _log_level = config_provider_->get_string( "server", "log_level" ).value_or( "info" );
+
+  address_ = ip + ":" + std::to_string( port );
   db_ptr_ = std::make_unique< database >();
-  db_worker_pool_ = std::make_unique< worker_pool >( 10 );
-  logger_ = spdlog::get( "server" );
+  db_worker_pool_ = std::make_unique< worker_pool >( db_worker_pool_size );
+  logger_ = logger_factory::create( "server" );
+  logger_->set_level( _log_level );
 }
 
 template< typename... rpc >

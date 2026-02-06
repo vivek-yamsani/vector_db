@@ -33,7 +33,7 @@ class collection
     : public collection_properties
     , public std::enable_shared_from_this< collection >
 {
-  std::shared_mutex vec_mutex_, idx_mutex_;
+  mutable std::shared_mutex vec_mutex_, idx_mutex_;
   std::unordered_map< id_t, vector_ptr, hash > vectors_;
   std::unordered_map< std::string, index_ptr > indices_;
 
@@ -45,7 +45,16 @@ public:
   // Remove vectors by id; returns count removed
   int remove_vectors( const std::vector< id_t >& ids );
 
-  const std::unordered_map< id_t, vector_ptr, hash >& get_vectors() const { return vectors_; }
+  std::unordered_map< id_t, vector_ptr, hash > get_vectors()
+  {
+    std::unordered_map< id_t, vector_ptr, hash > _vectors;
+    std::shared_lock lock( vec_mutex_ );
+    for ( auto& [ id, vector ] : vectors_ )
+    {
+      _vectors[ id ] = std::make_unique< float_vector >( *vector.get() );
+    }
+    return std::move( _vectors );
+  }
 
   bool search_for_top_k( const float_vector& query_vector,
                          unsigned int k,
@@ -55,7 +64,7 @@ public:
   bool add_index( const std::string& name, index_type, params_t* params );
 
   // Accessor for index to fetch data stored in collection without copying
-  const float_vector* get_vector_by_id( id_t _id ) const;
+  std::optional<float_vector> get_vector_by_id( id_t _id ) const;
 };
 
 }  // namespace vector_db

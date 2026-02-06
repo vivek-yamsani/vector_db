@@ -6,9 +6,6 @@ PROJECT(vector_db LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if (APPLE)
-  set(CMAKE_CXX_EXTENSIONS ON) # For now, This is required to build on Mac Todo: Fix this
-endif ()
 
 option(USE_ASAN "Use Address Sanitizer" OFF)
 option(WITH_TESTS "Build Tests" OFF)
@@ -29,5 +26,5 @@ add_executable(vector_db src/main.cpp)
 target_link_libraries(
         vector_db
         PUBLIC grpc_server
-        PRIVATE logger
+        PRIVATE logger configuration
 )

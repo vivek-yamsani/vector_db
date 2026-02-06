@@ -2,49 +2,54 @@
 // Created by Vivek Yamsani on 28/11/25.
 //
 #include <csignal>
+#include <filesystem>
 
+#include "configuration/provider.h"
 #include "grpc_server/server.h"
-#include "logger.h"
+#include "logger/logger.h"
 
 using namespace std::chrono_literals;
+namespace fs = std::filesystem;
 
-std::unique_ptr< vector_db::server > srv_ptr;
-std::atomic_bool running = true;
+std::atomic_bool running{ true };
 
-vector_db::init_logger logger( "main" );
+void sig_handler( int ) { running.store( false, std::memory_order_relaxed ); }
 
-int main()
+int main( int argc, char** argv )
 {
-  const char* port = std::getenv( "PORT" );
-  const char* log_level = std::getenv( "LOG_LEVEL" );
-  auto _logger = spdlog::get( "main" );
-  if ( log_level == nullptr )
-  {
-    _logger->info( "LOG_LEVEL env var not set, defaulting to info" );
-    log_level = "info";
-  }
-  spdlog::set_level( spdlog::level::from_str( log_level ) );
-  if ( port == nullptr || std::atoi( port ) == 0 )
-  {
-    _logger->info( "PORT env var not set, defaulting to 50051" );
-    port = "50051";
-  }
-  auto kill = []( int )
-  {
-    spdlog::get( "main" )->info( "Received shutdown signal, shutting down server" );
-    srv_ptr->shutdown();
-    running.store( false );
-  };
+  using vector_db::config_provider;
+  using vector_db::server;
 
-  std::signal( SIGINT, kill );
-  std::signal( SIGTERM, kill );
+  vector_db::logger_factory::initialize();
 
-  srv_ptr = std::make_unique< vector_db::server >( "0.0.0.0:" + std::string{ port }, 10 );
+  auto config_provider_ = config_provider::get_instance();
+
+  if ( argc > 1 )
+  {
+    if ( !fs::exists( argv[ 1 ] ) )
+    {
+      throw std::runtime_error( std::string{ argv[ 1 ] } + " Configuration file does not exist" );
+    }
+    config_provider_->load( argv[ 1 ] );
+  }
+
+  const auto log_level = config_provider_->get_string( "main.log_level" ).value_or( "info" );
+
+  const auto _logger = vector_db::logger_factory::create( "main" );
+  _logger->set_level( log_level );
+
+  std::signal( SIGINT, sig_handler );
+  std::signal( SIGTERM, sig_handler );
+
+  const auto srv_ptr = std::make_unique< server >();
   srv_ptr->start();
-  // srv_ptr->attach();  // attaching the main thread to grpc server processing
-  while ( running.load() )
+
+  while ( running.load( std::memory_order_relaxed ) )
   {
     std::this_thread::sleep_for( 1000ms );
   }
+
+  vector_db::logger_factory::create( "main" )->info( "Received shutdown signal, shutting down server" );
+  srv_ptr->shutdown();
   return 0;
 }

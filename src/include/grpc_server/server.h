@@ -5,7 +5,8 @@
 #include "db.grpc.pb.h"
 
 #include "core/database.h"
-#include "worker_pool.h"
+#include "grpc_server/worker_pool.h"
+#include "logger/logger.h"
 
 #include <grpcpp/grpcpp.h>
 #include <atomic>
@@ -19,7 +20,7 @@ namespace vector_db
 class server
 {
 public:
-  explicit server( std::string address, int _num_cq_threads = 0 );
+  server();
 
   void start();
   void shutdown();
@@ -39,12 +40,12 @@ private:
   struct add_index_handler;
   struct get_index_handler;
 
-  template <typename ...rpc>
+  template< typename... rpc >
   void init_rpc_handlers();
 
   void cq_poll_loop() const;
 
-  std::shared_ptr< spdlog::logger > logger_;
+  std::shared_ptr< details::logger_impl > logger_;
   std::unique_ptr< worker_pool > db_worker_pool_;
   std::string address_;
   std::unique_ptr< database > db_ptr_;
@@ -52,7 +53,7 @@ private:
   std::unique_ptr< grpc::ServerCompletionQueue > cq_;
   vectorService::AsyncService service_;
   std::vector< std::thread > cq_threads_;
-  static uint8_t num_of_thread_;
+  uint8_t num_of_thread_;
   std::atomic< bool > running_{ false };
 };
 }  // namespace vector_db

@@ -13,8 +13,8 @@ add_library(vector_db::core ALIAS core)
 
 target_link_libraries(
         core
-        PUBLIC spdlog::spdlog_header_only
-        PRIVATE logger
+        PUBLIC logger
+        PRIVATE configuration
 )
 
 target_include_directories(core PUBLIC

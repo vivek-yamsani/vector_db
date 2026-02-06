@@ -2,28 +2,28 @@
 // Created by Vivek Yamsani on 28/11/25.
 //
 #pragma once
-#include <spdlog/logger.h>
 #include <memory>
 #include <shared_mutex>
 #include <unordered_map>
 
 #include "core/collection.h"
 #include "core/utils/util.h"
+#include "logger/logger.h"
 
 namespace vector_db
 {
 
 class database
 {
-  std::shared_mutex mutex_;
-  std::shared_ptr< spdlog::logger > logger_;
-
   using shd_collection_ptr = std::shared_ptr< collection >;
+
+  std::shared_mutex mutex_;
+  std::shared_ptr< details::logger_impl > logger_;
+  std::unordered_map< std::string, shd_collection_ptr > collections_;
 
 public:
   database();
 
-  std::unordered_map< std::string, shd_collection_ptr > collections_;
 
   status add_vectors( const std::string& collection_name, std::vector< std::pair< id_t, float_vector > > vectors );
 

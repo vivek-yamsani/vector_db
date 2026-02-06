@@ -355,6 +355,7 @@ bool index::search_for_top_k( const float_vector& query_vector, unsigned int k, 
 
 void index::on_vectors_added( const std::vector< id_t >& new_ids )
 {
+  unique_lock< shared_mutex > lock( mutex_ );
   for ( auto _id : new_ids )
   {
     if ( inserted_.count( _id ) )
@@ -367,6 +368,7 @@ void index::on_vectors_added( const std::vector< id_t >& new_ids )
 
 void index::on_vectors_removed( const std::vector< id_t >& removed_ids )
 {
+  unique_lock< shared_mutex > lock( mutex_ );
   for ( auto _id : removed_ids )
   {
     if ( to_be_inserted_.count( _id ) )

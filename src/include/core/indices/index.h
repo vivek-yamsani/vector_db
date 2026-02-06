@@ -30,9 +30,9 @@ public:
 
 protected:
   wk_col_ptr collection_ptr_;
+  bool dirty_{ false };
 
 public:
-  bool dirty_{ false };
 
   index_t() = default;
   explicit index_t( wk_col_ptr&& _collection_ptr )

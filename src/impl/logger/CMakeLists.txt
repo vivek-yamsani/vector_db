@@ -1,5 +1,15 @@
 project(logger)
 
-add_library(logger INTERFACE logger.h)
+find_package(spdlog REQUIRED)
+find_package(fmt REQUIRED)
 
-target_include_directories(logger INTERFACE .)
+add_library(logger STATIC logger.cpp)
+
+target_link_libraries(logger
+        PUBLIC fmt::fmt
+        PRIVATE configuration spdlog::spdlog_header_only)
+
+target_include_directories(logger PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/include>
+)

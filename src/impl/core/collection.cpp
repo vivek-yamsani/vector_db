@@ -18,37 +18,43 @@ collection::collection( const unsigned int dimension, const std::string& name )
 
 std::pair< int, int > collection::add_vectors( std::vector< std::pair< id_t, float_vector > > vectors )
 {
-  std::unique_lock< std::shared_mutex > lock( vec_mutex_ );
   int added = 0, updated = 0;
   std::vector< id_t > _new_ids;
-  for ( auto& [ id, _vector ] : vectors )
   {
-    _new_ids.push_back( id );
-    if ( auto [ _, _added ] = vectors_.emplace( id, std::make_unique< float_vector >( std::move( _vector ) ) ); _added )
+    std::unique_lock< std::shared_mutex > lock( vec_mutex_ );
+    for ( auto& [ id, _vector ] : vectors )
     {
-      added++;
-    }
-    else
-    {
-      *vectors_[ id ] = _vector;
-      updated++;
+      _new_ids.push_back( id );
+      if ( auto [ _, _added ] = vectors_.emplace( id, std::make_unique< float_vector >( _vector ) ); _added )
+      {
+        added++;
+      }
+      else
+      {
+        *vectors_[ id ] = _vector;
+        updated++;
+      }
     }
   }
 
-  for ( auto& [ _, index ] : indices_ )
   {
-    index->on_vectors_added( _new_ids );
+    std::shared_lock lock( idx_mutex_ );
+    for ( auto& [ _, index ] : indices_ )
+    {
+      index->on_vectors_added( _new_ids );
+    }
   }
 
   return { added, updated };
 }
 
-const float_vector* collection::get_vector_by_id( id_t _id ) const
+std::optional< float_vector > collection::get_vector_by_id( id_t _id ) const
 {
-  auto it = vectors_.find( _id );
+  std::shared_lock lock( vec_mutex_ );
+  const auto it = vectors_.find( _id );
   if ( it == vectors_.end() )
-    return nullptr;
-  return it->second.get();
+    return std::nullopt;
+  return *it->second;
 }
 
 int collection::remove_vectors( const std::vector< id_t >& ids )
@@ -66,6 +72,7 @@ int collection::remove_vectors( const std::vector< id_t >& ids )
   }
   if ( !_removed_ids.empty() )
   {
+    std::shared_lock lock2( idx_mutex_ );
     for ( auto& [ _, _index ] : indices_ )
     {
       _index->on_vectors_removed( _removed_ids );
@@ -108,16 +115,14 @@ bool collection::search_for_top_k( const float_vector& query_vector,
                                    const std::string& index_name )
 {
   std::shared_lock< std::shared_mutex > lock( idx_mutex_ );
-  if ( auto it = indices_.find( index_name ); it == indices_.end() )
+  const auto it = indices_.find( index_name );
+  if ( it == indices_.end() )
   {
     indices::euclidean::index _idx( weak_from_this() );
-    _idx.search_for_top_k( query_vector, k, results );
+    return _idx.search_for_top_k( query_vector, k, results );
   }
-  else
-  {
-    return it->second->search_for_top_k( query_vector, k, results );
-  }
-  return false;
+
+  return it->second->search_for_top_k( query_vector, k, results );
 }
 
 }  // namespace vector_db

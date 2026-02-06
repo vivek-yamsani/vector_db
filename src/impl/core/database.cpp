@@ -2,9 +2,9 @@
 // Implementation for vector_db::database
 //
 #include "core/database.h"
-#include "logger.h"
+#include "configuration/provider.h"
+#include "logger/logger.h"
 
-#include "spdlog/spdlog.h"
 
 namespace vector_db
 {
@@ -13,8 +13,9 @@ using utils::is_collection_name_valid;
 
 database::database()
 {
-  static init_logger db_logger( "db" );
-  logger_ = spdlog::get( "db" );
+  auto _log_level = config_provider::get_instance()->get_string( "logger", "log_level" ).value_or( "info" );
+  logger_ = logger_factory::create( "core" );
+  logger_->set_level( _log_level );
 }
 
 status database::add_vectors( const std::string& collection_name, std::vector< std::pair< id_t, float_vector > > vectors )
