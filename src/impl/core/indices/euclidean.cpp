@@ -19,18 +19,25 @@ bool index::search_for_top_k( const float_vector& query_vector, unsigned int k, 
     const auto col = collection_ptr_.lock();
     if ( !col )
       throw std::runtime_error( "Collection pointer expired during search" );
-    const auto& vectors_ = col->get_vectors();
+    const auto& _id_set = col->get_all_vector_ids();
     results.clear();
-    if ( k > vectors_.size() )
+    if ( k > _id_set.size() )
     {
-      k = static_cast< unsigned int >( vectors_.size() );
+      k = static_cast< unsigned int >( _id_set.size() );
     }
     std::vector< std::pair< double, id_t > > dist_vec;
-    dist_vec.reserve( vectors_.size() );
-    for ( const auto& [ id, vector ] : vectors_ )
+    dist_vec.reserve( _id_set.size() );
+    for ( const auto& _id : _id_set )
     {
       const auto dist_func = distance::euclidean::get_instance();
-      dist_vec.emplace_back( dist_func->compute( query_vector, *vector.get() ), id );
+      if ( const auto vector = col->get_vector_by_id( _id ); vector )
+        dist_vec.emplace_back( dist_func->compute( query_vector, vector.value() ), _id );
+      else
+      {
+        // this should never happen, as vec_mutex_ is locked in search_for_top_k in the collection struct.
+        logger_->error( "Vector with id {} not found in collection {}", _id, col->name_ );
+        return false;
+      }
     }
 
     std::partial_sort( dist_vec.begin(), dist_vec.begin() + k, dist_vec.end() );
@@ -40,7 +47,8 @@ bool index::search_for_top_k( const float_vector& query_vector, unsigned int k, 
     {
       auto& [ dist, _id ] = dist_vec[ i ];
       results[ i ].first = dist;
-      results[ i ].second = { _id, std::make_unique< float_vector >( *vectors_.at( _id ).get() ) };
+      // there is no need to check for vector existence again, as it was already checked in the loop above.
+      results[ i ].second = { _id, std::make_unique< float_vector >( col->get_vector_by_id( _id ).value() ) };
     }
   }
   catch ( const std::exception& e )

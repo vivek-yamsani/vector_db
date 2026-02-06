@@ -118,12 +118,24 @@ bool collection::add_index( const std::string& name, index_type _index_type, par
   }
 }
 
+std::unordered_set< id_t, hash > collection::get_all_vector_ids() const
+{
+  std::shared_lock lock( vec_mutex_ );
+  std::unordered_set< id_t, hash > _ids;
+  for ( auto& [ id, vector ] : vectors_ )
+  {
+    _ids.insert( id );
+  }
+  return std::move( _ids );
+}
+
 bool collection::search_for_top_k( const float_vector& query_vector,
                                    const unsigned int k,
                                    std::vector< score_pair >& results,
                                    const std::string& index_name )
 {
   std::shared_lock< std::shared_mutex > lock( idx_mutex_ );
+  std::shared_lock< std::shared_mutex > lock2( vec_mutex_ );
   const auto it = indices_.find( index_name );
   if ( it == indices_.end() )
   {

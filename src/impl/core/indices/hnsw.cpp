@@ -47,8 +47,8 @@ double index::dist( const id_t _a, const id_t _b, const col_ptr& col ) const
   if ( !col )
     throw std::runtime_error( "Collection expired" );
 
-  auto va = col->get_vector_by_id( _a );
-  auto vb = col->get_vector_by_id( _b );
+  const auto va = col->get_vector_by_id( _a );
+  const auto vb = col->get_vector_by_id( _b );
 
   if ( !va || !vb )
     return std::numeric_limits< double >::max();
@@ -60,7 +60,7 @@ double index::dist( const float_vector& q, const id_t _b, const col_ptr& col ) c
   if ( !col )
     throw std::runtime_error( "Collection expired" );
 
-  auto vb = col->get_vector_by_id( _b );
+  const auto vb = col->get_vector_by_id( _b );
   if ( !vb )
     return std::numeric_limits< double >::max();
   return params_.distance_->compute( q, *vb );
@@ -166,13 +166,13 @@ void index::init()
   auto col = collection_ptr_.lock();
   if ( !col )
     throw std::runtime_error( "Collection pointer expired during build" );
-  const auto& src = col->get_vectors();
+  const auto& _id_set = col->get_all_vector_ids();
   no_lock_clear();
-  if ( src.empty() )
+  if ( _id_set.empty() )
     return;
 
-  for ( const auto& [ fst, snd ] : src )
-    to_be_inserted_.insert( fst );
+  for ( const auto& _id : _id_set )
+    to_be_inserted_.insert( _id );
 
   // Initialize the first point
   // entry_point_ = *to_be_inserted_.begin();
@@ -186,6 +186,7 @@ void index::init()
 
 void index::insert( id_t id, const col_ptr& col )
 {
+  static constexpr auto _func_name = "index::insert";
   cand_set_t candidates;  // currently found nearest elements
   int node_level = generate_random_level();
   node_levels_[ id ] = node_level;
@@ -196,9 +197,15 @@ void index::insert( id_t id, const col_ptr& col )
     entry_point_ = id;
   }
   id_set ep{ entry_point_ };
+  const auto curr_vector = col->get_vector_by_id( id );
+  if ( !curr_vector )
+  {
+    logger_->error( "{}: Failed to get vector for id {} in collection {}", _func_name, id, col->name_ );
+    return;
+  }
   for ( int lc = max_layer_; lc > node_level; --lc )
   {
-    candidates = search_layer( *col->get_vector_by_id( id ), ep, 1, lc, col );
+    candidates = search_layer( curr_vector.value(), ep, 1, lc, col );
     ep = { candidates.begin()->second };
   }
 
@@ -206,7 +213,7 @@ void index::insert( id_t id, const col_ptr& col )
   for ( int lc = std::min( node_level, max_layer_ ); lc >= 0; --lc )
   {
     auto layer_M = lc == 0 ? params_.M0_ : params_.M_;
-    candidates = search_layer( *col->get_vector_by_id( id ), { ep }, params_.ef_construction_, lc, col );
+    candidates = search_layer( curr_vector.value(), { ep }, params_.ef_construction_, lc, col );
     auto selected_candidates = select_neighbors_heuristic( candidates, layer_M );
 
     // add bidirectional links
@@ -343,7 +350,8 @@ void index::search_knn( const float_vector& query, unsigned int k, vector< score
   {
     if ( result.size() >= k )
       break;
-    result.emplace_back( distance, id_vector{ id, std::make_unique< float_vector >( *col->get_vector_by_id( id ) ) } );
+    const auto curr_vector = col->get_vector_by_id( id );
+    result.emplace_back( distance, id_vector{ id, std::make_unique< float_vector >( curr_vector.value() ) } );
   }
 }
 

@@ -47,16 +47,7 @@ public:
   // Remove vectors by id; returns count removed
   int remove_vectors( const std::vector< id_t >& ids );
 
-  std::unordered_map< id_t, vector_ptr, hash > get_vectors()
-  {
-    std::unordered_map< id_t, vector_ptr, hash > _vectors;
-    std::shared_lock lock( vec_mutex_ );
-    for ( auto& [ id, vector ] : vectors_ )
-    {
-      _vectors[ id ] = std::make_unique< float_vector >( *vector.get() );
-    }
-    return std::move( _vectors );
-  }
+  std::unordered_set< id_t, hash > get_all_vector_ids() const;
 
   bool search_for_top_k( const float_vector& query_vector,
                          unsigned int k,
@@ -65,7 +56,7 @@ public:
 
   bool add_index( const std::string& name, index_type, params_t* params );
 
-  // Accessor for index to fetch data stored in collection without copying
+  // Accessor for index to fetch data stored in a collection without copying
   std::optional< float_vector > get_vector_by_id( id_t _id ) const;
 };
 
