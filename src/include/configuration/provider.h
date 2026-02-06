@@ -32,6 +32,7 @@ class config_provider : public utils::singleton< config_provider >
   friend utils::singleton< config_provider >;
   config_provider();
   explicit config_provider( const std::filesystem::path& config_path );
+
 public:
   ~config_provider();
 
@@ -76,29 +77,25 @@ public:
   std::optional< std::vector< int64_t > > get_int_array( const std::vector< std::string >& keys ) const;
 
   // Variadic convenience overloads for multiple keys
-  template< typename... Keys,
-            std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
+  template< typename... Keys, std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
   std::optional< std::string > get_string( Keys&&... keys ) const
   {
     return get_string( std::vector< std::string >{ std::string( std::forward< Keys >( keys ) )... } );
   }
 
-  template< typename... Keys,
-            std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
+  template< typename... Keys, std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
   std::optional< int64_t > get_int( Keys&&... keys ) const
   {
     return get_int( std::vector< std::string >{ std::string( std::forward< Keys >( keys ) )... } );
   }
 
-  template< typename... Keys,
-            std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
+  template< typename... Keys, std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
   std::optional< double > get_double( Keys&&... keys ) const
   {
     return get_double( std::vector< std::string >{ std::string( std::forward< Keys >( keys ) )... } );
   }
 
-  template< typename... Keys,
-            std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
+  template< typename... Keys, std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
   std::optional< bool > get_bool( Keys&&... keys ) const
   {
     return get_bool( std::vector< std::string >{ std::string( std::forward< Keys >( keys ) )... } );
@@ -109,8 +106,7 @@ public:
   /// @return true if the key path exists
   bool has_key( const std::vector< std::string >& keys ) const;
 
-  template< typename... Keys,
-            std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
+  template< typename... Keys, std::enable_if_t< ( std::is_convertible_v< Keys, std::string > && ... ), int > = 0 >
   bool has_key( Keys&&... keys ) const
   {
     return has_key( std::vector< std::string >{ std::string( std::forward< Keys >( keys ) )... } );

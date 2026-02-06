@@ -47,10 +47,10 @@ double index::dist( const id_t _a, const id_t _b, const col_ptr& col ) const
   if ( !col )
     throw std::runtime_error( "Collection expired" );
 
-  const float_vector* va = col->get_vector_by_id( _a );
-  const float_vector* vb = col->get_vector_by_id( _b );
+  auto va = col->get_vector_by_id( _a );
+  auto vb = col->get_vector_by_id( _b );
 
-  if ( va == nullptr || vb == nullptr )
+  if ( !va || !vb )
     return std::numeric_limits< double >::max();
   return params_.distance_->compute( *va, *vb );
 }
@@ -60,8 +60,8 @@ double index::dist( const float_vector& q, const id_t _b, const col_ptr& col ) c
   if ( !col )
     throw std::runtime_error( "Collection expired" );
 
-  const float_vector* vb = col->get_vector_by_id( _b );
-  if ( vb == nullptr )
+  auto vb = col->get_vector_by_id( _b );
+  if ( !vb )
     return std::numeric_limits< double >::max();
   return params_.distance_->compute( q, *vb );
 }

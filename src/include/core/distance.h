@@ -59,9 +59,9 @@ struct cosine
     }
     mag_a = std::sqrt( mag_a );
     mag_b = std::sqrt( mag_b );
-    if ( mag_a * mag_b <= 0.0 + std::numeric_limits< double >::epsilon() )
+    if ( mag_a == 0.0 || mag_b == 0.0 )
     {
-      return std::numeric_limits< double >::min();
+      return 1.0;
     }
     return 1.0 - ( dot_product / ( mag_a * mag_b ) );
   }

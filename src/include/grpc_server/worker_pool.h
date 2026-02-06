@@ -12,6 +12,7 @@ namespace vector_db
 class worker_pool
 {
   using cb = std::function< void() >;
+  static constexpr size_t MAX_QUEUE_SIZE = 10000;
   size_t num_threads_;
   std::vector< std::thread > threads_;
   std::queue< cb > tasks_;
@@ -65,15 +66,16 @@ public:
     init();
   }
 
-  ~worker_pool()
-  {
-    shutdown();
-  }
+  ~worker_pool() { shutdown(); }
 
   void submit( cb task )
   {
     {
       std::lock_guard< std::mutex > lock( mutex_ );
+      if ( tasks_.size() >= MAX_QUEUE_SIZE )
+      {
+        throw std::runtime_error( "Task queue full" );
+      }
       tasks_.emplace( std::move( task ) );
     }
     cv_.notify_one();
@@ -83,7 +85,9 @@ public:
   {
     {
       std::lock_guard< std::mutex > lock( mutex_ );
-      stopped = true;
+      if ( stopped.load() )
+        return;
+      stopped.store( true );
     }
     cv_.notify_all();
     for ( auto& t : threads_ )

@@ -33,19 +33,24 @@ bool index::search_for_top_k( const float_vector& query_vector, unsigned int k, 
       dist_vec.emplace_back( dist_func->compute( query_vector, *vector.get() ), id );
     }
 
-    std::sort( dist_vec.begin(), dist_vec.end() );
+    std::partial_sort( dist_vec.begin(), dist_vec.begin() + k, dist_vec.end() );
 
     results.resize( k );
-    for ( long i = 0; i < static_cast< long >( k ); ++i )
+    for ( size_t i = 0; i < k; ++i )
     {
-      auto& [ dist, _id ] = *dist_vec.begin();
+      auto& [ dist, _id ] = dist_vec[ i ];
       results[ i ].first = dist;
       results[ i ].second = { _id, std::make_unique< float_vector >( *vectors_.at( _id ).get() ) };
-      dist_vec.erase( dist_vec.begin() );
     }
+  }
+  catch ( const std::exception& e )
+  {
+    logger_->error( "Failed to search for top k: {}", e.what() );
+    return false;
   }
   catch ( ... )
   {
+    logger_->error( "Failed to search for top k due to an unknown exception" );
     return false;
   }
 

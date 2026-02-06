@@ -14,6 +14,7 @@ namespace vector_db
 collection::collection( const unsigned int dimension, const std::string& name )
     : collection_properties( dimension, name )
 {
+  logger_ = logger_factory::create( "collection" );
 }
 
 std::pair< int, int > collection::add_vectors( std::vector< std::pair< id_t, float_vector > > vectors )
@@ -25,14 +26,16 @@ std::pair< int, int > collection::add_vectors( std::vector< std::pair< id_t, flo
     for ( auto& [ id, _vector ] : vectors )
     {
       _new_ids.push_back( id );
-      if ( auto [ _, _added ] = vectors_.emplace( id, std::make_unique< float_vector >( _vector ) ); _added )
+      auto it = vectors_.find( id );
+      if ( it != vectors_.end() )
       {
-        added++;
+        *( it->second ) = std::move( _vector );
+        updated++;
       }
       else
       {
-        *vectors_[ id ] = _vector;
-        updated++;
+        vectors_.emplace( id, std::make_unique< float_vector >( std::move( _vector ) ) );
+        added++;
       }
     }
   }
@@ -87,7 +90,7 @@ bool collection::add_index( const std::string& name, index_type _index_type, par
     return false;
   try
   {
-    std::shared_lock< std::shared_mutex > lock( idx_mutex_ );
+    std::unique_lock< std::shared_mutex > lock( idx_mutex_ );
 
     switch ( _index_type )
     {
@@ -103,8 +106,14 @@ bool collection::add_index( const std::string& name, index_type _index_type, par
         return false;
     }
   }
+  catch ( const std::exception& e )
+  {
+    logger_->error( "Failed to add index: {}", e.what() );
+    return false;
+  }
   catch ( ... )
   {
+    logger_->error( "Failed to add index due to an unknown exception" );
     return false;
   }
 }

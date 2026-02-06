@@ -15,4 +15,4 @@ public:
   bool search_for_top_k( const float_vector& query_vector, unsigned int k, std::vector< score_pair >& results ) override;
 };
 
-}  // namespace vector_db
+}  // namespace vector_db::indices::euclidean

@@ -13,5 +13,4 @@ index::index( wk_col_ptr _collection_ptr )
 }
 
 
-
 }  // namespace vector_db::indices::ivf_flat

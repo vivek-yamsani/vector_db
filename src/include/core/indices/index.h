@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include "core/float_vector.h"
+#include "logger/logger.h"
 
 namespace vector_db
 {
@@ -31,17 +32,19 @@ public:
 protected:
   wk_col_ptr collection_ptr_;
   bool dirty_{ false };
+  std::shared_ptr< details::logger_impl > logger_;
 
 public:
-
-  index_t() = default;
+  index_t() { logger_ = logger_factory::create( "index" ); }
   explicit index_t( wk_col_ptr&& _collection_ptr )
       : collection_ptr_( std::move( _collection_ptr ) )
   {
+    logger_ = logger_factory::create( "index" );
   }
   explicit index_t( const std::weak_ptr< collection >& _collection_ptr )
       : collection_ptr_( _collection_ptr )
   {
+    logger_ = logger_factory::create( "index" );
   }
 
   virtual ~index_t() = default;

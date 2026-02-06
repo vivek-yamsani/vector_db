@@ -31,6 +31,10 @@ double get_cosine_distance( const float_vector& a, const float_vector& b )
   }
   mag_a = std::sqrt( mag_a );
   mag_b = std::sqrt( mag_b );
+  if ( mag_a == 0.0 || mag_b == 0.0 )
+  {
+    return 1.0;
+  }
   return 1.0 - ( dot_product / ( mag_a * mag_b ) );
 }
 

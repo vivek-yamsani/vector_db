@@ -13,6 +13,7 @@
 #include "core/indices/hnsw.h"
 #include "core/indices/index.h"
 #include "core/utils/splitmix_hash.h"
+#include "logger/logger.h"
 
 namespace vector_db
 {
@@ -36,6 +37,7 @@ class collection
   mutable std::shared_mutex vec_mutex_, idx_mutex_;
   std::unordered_map< id_t, vector_ptr, hash > vectors_;
   std::unordered_map< std::string, index_ptr > indices_;
+  std::shared_ptr< details::logger_impl > logger_;
 
 public:
   explicit collection( unsigned int dimension, const std::string& name );
@@ -64,7 +66,7 @@ public:
   bool add_index( const std::string& name, index_type, params_t* params );
 
   // Accessor for index to fetch data stored in collection without copying
-  std::optional<float_vector> get_vector_by_id( id_t _id ) const;
+  std::optional< float_vector > get_vector_by_id( id_t _id ) const;
 };
 
 }  // namespace vector_db

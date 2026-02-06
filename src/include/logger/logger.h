@@ -51,8 +51,7 @@ public:
   /// @param level Log level for this logger (defaults to info)
   /// @return Shared pointer to logger implementation
   /// @throws std::runtime_error if not initialized
-  static std::shared_ptr< details::logger_impl > create( std::string name,
-                                                          log_level level = log_level::info );
+  static std::shared_ptr< details::logger_impl > create( std::string name, log_level level = log_level::info );
 
   /// Flush all loggers immediately
   static void flush_all();

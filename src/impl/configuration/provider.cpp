@@ -89,6 +89,7 @@ public:
     }
     catch ( ... )
     {
+      // Silently return nullopt on error - caller can handle missing values
       return std::nullopt;
     }
   }
@@ -151,6 +152,7 @@ public:
     }
     catch ( ... )
     {
+      // Silently return nullopt on error - caller can handle missing values
       return std::nullopt;
     }
   }
@@ -185,6 +187,7 @@ public:
     }
     catch ( ... )
     {
+      // Silently return false on error
       return false;
     }
   }
@@ -199,7 +202,10 @@ private:
 
 // config_provider implementation
 
-config_provider::config_provider() : impl_( std::make_unique< details::config_provider_impl >() ) {}
+config_provider::config_provider()
+    : impl_( std::make_unique< details::config_provider_impl >() )
+{
+}
 
 config_provider::config_provider( const std::filesystem::path& config_path )
     : impl_( std::make_unique< details::config_provider_impl >() )
@@ -237,8 +243,7 @@ std::optional< bool > config_provider::get_bool( const std::vector< std::string 
 }
 
 // Array getters
-std::optional< std::vector< std::string > > config_provider::get_string_array(
-    const std::vector< std::string >& keys ) const
+std::optional< std::vector< std::string > > config_provider::get_string_array( const std::vector< std::string >& keys ) const
 {
   return impl_->get_array< std::string >( keys );
 }

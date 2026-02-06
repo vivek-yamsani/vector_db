@@ -112,6 +112,21 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
   void process() override
   {
     logger_->info( "Create collection request: name {}, dimension {}", request_.name(), request_.dimension() );
+    if ( request_.name().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
+
+    if ( request_.dimension() <= 0 )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Vector dimension must be greater than 0." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
     db_worker_pool_->submit(
         [ this ]()
         {
@@ -152,6 +167,13 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
 
   void process() override
   {
+    if ( request_.collectionname().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
     db_worker_pool_->submit(
         [ this ]
         {
@@ -191,6 +213,20 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
 
   void process() override
   {
+    if ( request_.collectionname().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
+    if ( request_.vectors_size() == 0 )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector is required for upsert." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
     db_worker_pool_->submit(
         [ this ]
         {
@@ -238,16 +274,29 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
 
   void process() override
   {
+    if ( request_.collectionname().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
+    if ( request_.top_k() <= 0 )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "top_k must be greater than 0." );
+      responder.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
     db_worker_pool_->submit(
         [ this ]()
         {
-          grpc::Status _grpc_status;
           try
           {
             std::vector< score_pair > _result;
             float_vector _query{ request_.queryvector_size(), request_.queryvector().data() };
             const auto _status = db_ptr_->get_nearest_k( request_.collectionname(), _query, request_.top_k(), _result );
-            _grpc_status = status_to_grpc_status( _status );
+            status_ = status_to_grpc_status( _status );
             for ( auto& [ score, _id_vector ] : _result )
             {
               auto& [ _id, _vector_ptr ] = _id_vector;
@@ -262,9 +311,10 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
           catch ( std::exception& e )
           {
             logger_->error( "Get nearest k error: {}", e.what() );
+            status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
 
-          responder.Finish( response_, _grpc_status, this );
+          responder.Finish( response_, status_, this );
           state_ = state::PROCESSED;
         } );
   }
@@ -355,6 +405,20 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
 
   void process() override
   {
+    if ( request_.collection_name().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
+      reader.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
+    if ( request_.id_size() == 0 )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector ID is required for deletion." );
+      reader.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
     db_worker_pool_->submit(
         [ this ]()
         {

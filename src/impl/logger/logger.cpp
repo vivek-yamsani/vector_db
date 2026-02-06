@@ -9,7 +9,6 @@
 #include <stdexcept>
 #include <unordered_map>
 
-#include "configuration/provider.h"
 #include "spdlog/async.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/spdlog.h"
@@ -91,9 +90,7 @@ log_level parse_log_level( std::string_view level )
 {
   std::string lower;
   lower.reserve( level.size() );
-  std::transform( level.begin(), level.end(), std::back_inserter( lower ), []( unsigned char c ) {
-    return std::tolower( c );
-  } );
+  std::transform( level.begin(), level.end(), std::back_inserter( lower ), []( unsigned char c ) { return std::tolower( c ); } );
 
   if ( lower == "trace" )
     return log_level::trace;
@@ -119,7 +116,10 @@ namespace details
 class spdlog_logger_impl : public logger_impl
 {
 public:
-  explicit spdlog_logger_impl( std::shared_ptr< spdlog::logger > logger ) : logger_( std::move( logger ) ) {}
+  explicit spdlog_logger_impl( std::shared_ptr< spdlog::logger > logger )
+      : logger_( std::move( logger ) )
+  {
+  }
 
   void trace( std::string_view msg ) override { logger_->trace( msg ); }
 
@@ -163,17 +163,15 @@ void logger_factory::initialize()
 
   try
   {
-    // Get config_provider singleton instance
-    const auto& config = *config_provider::get_instance();
-
-    // Read configuration from [logger] section with defaults
-    auto log_dir = config.get_string( "logger", "log_directory" ).value_or( "logs" );
-    auto log_filename = config.get_string( "logger", "log_filename" ).value_or( "vector_db.log" );
-    auto max_file_size_mb = config.get_int( "logger", "max_file_size_mb" ).value_or( 30 );
-    auto max_files = config.get_int( "logger", "max_files" ).value_or( 3 );
-    auto thread_pool_queue_size = config.get_int( "logger", "thread_pool_queue_size" ).value_or( 8192 );
-    auto thread_pool_threads = config.get_int( "logger", "thread_pool_threads" ).value_or( 2 );
-    auto flush_interval_seconds = config.get_int( "logger", "flush_interval_seconds" ).value_or( 1 );
+    // Use hardcoded defaults - logger is foundational infrastructure
+    // that should not depend on config_provider to avoid circular dependencies
+    constexpr std::string_view log_dir = "logs";
+    constexpr std::string_view log_filename = "vector_db.log";
+    constexpr size_t max_file_size_mb = 30;
+    constexpr size_t max_files = 3;
+    constexpr size_t thread_pool_queue_size = 8192;
+    constexpr size_t thread_pool_threads = 2;
+    constexpr int flush_interval_seconds = 1;
 
     // Create log directory if it doesn't exist
     std::filesystem::path log_directory{ log_dir };
@@ -183,15 +181,12 @@ void logger_factory::initialize()
     }
 
     // Initialize thread pool for async logging
-    spdlog::init_thread_pool( static_cast< size_t >( thread_pool_queue_size ),
-                              static_cast< size_t >( thread_pool_threads ) );
+    spdlog::init_thread_pool( thread_pool_queue_size, thread_pool_threads );
 
     // Create rotating file sink
     auto log_path = log_directory / log_filename;
-    state.sink = std::make_shared< spdlog::sinks::rotating_file_sink_mt >(
-        log_path.string(),
-        static_cast< size_t >( max_file_size_mb ) * BYTES_PER_MB,
-        static_cast< size_t >( max_files ) );
+    state.sink =
+        std::make_shared< spdlog::sinks::rotating_file_sink_mt >( log_path.string(), max_file_size_mb * BYTES_PER_MB, max_files );
 
     // Set up automatic flushing
     spdlog::flush_every( std::chrono::seconds( flush_interval_seconds ) );
@@ -229,10 +224,8 @@ std::shared_ptr< details::logger_impl > logger_factory::create( std::string name
   }
 
   // Create new async logger
-  auto logger = std::make_shared< spdlog::async_logger >( name,
-                                                           state.sink,
-                                                           spdlog::thread_pool(),
-                                                           spdlog::async_overflow_policy::discard_new );
+  auto logger = std::make_shared< spdlog::async_logger >(
+      name, state.sink, spdlog::thread_pool(), spdlog::async_overflow_policy::discard_new );
 
   // Set pattern: [HH:MM:SS:ms][thread id][level][logger name] message
   logger->set_pattern( "[%H:%M:%S:%e][thread %t][%=8l][%=11n] %v" );
@@ -246,9 +239,10 @@ std::shared_ptr< details::logger_impl > logger_factory::create( std::string name
   return std::make_shared< details::spdlog_logger_impl >( logger );
 }
 
-void logger_factory::flush_all() { spdlog::apply_all( []( std::shared_ptr< spdlog::logger > logger ) {
-  logger->flush();
-} ); }
+void logger_factory::flush_all()
+{
+  spdlog::apply_all( []( std::shared_ptr< spdlog::logger > logger ) { logger->flush(); } );
+}
 
 void logger_factory::shutdown()
 {
