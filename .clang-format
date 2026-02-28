@@ -23,7 +23,7 @@ ColumnLimit: 130
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 FixNamespaceComments: true
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
 IndentCaseLabels: true
 IndentWidth: 2
 IndentWrappedFunctionNames: true
@@ -32,6 +32,16 @@ MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
 PointerAlignment: Left
 SortIncludes: true
+IncludeCategories:
+  # Main header file has priority 0 by default.
+
+  # C++ standard library headers (e.g., <algorithm>, <string>) - Priority 2
+  - Regex: '^<' # Add all needed C++ std headers
+    Priority: 0
+
+  # Your project's .h files (e.g., "base/...") - Priority 3
+  - Regex: '^"'
+    Priority: 1
 SpaceAfterTemplateKeyword: false
 SpaceBeforeParens: Custom
 SpacesInAngles: true

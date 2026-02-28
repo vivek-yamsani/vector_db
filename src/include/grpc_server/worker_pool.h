@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <functional>
 #include <thread>
+
 #include "logger/logger.h"
 
 namespace vector_db
@@ -23,7 +24,7 @@ class worker_pool
 
   void worker_thread()
   {
-    while ( !stopped.load() )
+    while ( !stopped.load( std::memory_order_relaxed ) )
     {
       cb task;
       {
@@ -85,9 +86,9 @@ public:
   {
     {
       std::lock_guard< std::mutex > lock( mutex_ );
-      if ( stopped.load() )
+      if ( stopped.load( std::memory_order_relaxed ) )
         return;
-      stopped.store( true );
+      stopped.store( true, std::memory_order_relaxed );
     }
     cv_.notify_all();
     for ( auto& t : threads_ )

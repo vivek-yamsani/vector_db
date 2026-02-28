@@ -2,17 +2,16 @@
 // Created by Vivek Yamsani on 30/11/25.
 //
 #pragma once
-#include "db.grpc.pb.h"
-
-#include "core/database.h"
-#include "grpc_server/worker_pool.h"
-#include "logger/logger.h"
-
-#include <grpcpp/grpcpp.h>
 #include <atomic>
+#include <grpcpp/grpcpp.h>
 #include <memory>
 #include <string>
 #include <thread>
+
+#include "core/database.h"
+#include "db.grpc.pb.h"
+#include "grpc_server/worker_pool.h"
+#include "logger/logger.h"
 
 namespace vector_db
 {

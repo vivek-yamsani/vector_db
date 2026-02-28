@@ -1,14 +1,12 @@
 //
 // Created by Vivek Yamsani on 06/02/26.
 //
-#include "logger/logger.h"
-
 #include <algorithm>
 #include <filesystem>
 #include <mutex>
 #include <stdexcept>
-#include <unordered_map>
 
+#include "logger/logger.h"
 #include "spdlog/async.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/spdlog.h"

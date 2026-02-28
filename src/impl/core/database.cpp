@@ -2,6 +2,7 @@
 // Implementation for vector_db::database
 //
 #include "core/database.h"
+
 #include "configuration/provider.h"
 #include "logger/logger.h"
 

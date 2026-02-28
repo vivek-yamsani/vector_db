@@ -1,13 +1,13 @@
 //
 // Implementation for vector_db::collection
 //
-#include "core/collection.h"
-#include "core/indices/euclidean.h"
-#include "core/indices/hnsw.h"
-#include "core/utils/util.h"
-
 #include <algorithm>
 #include <iostream>
+
+#include "core/collection.h"
+#include "core/indices/euclidean.h"
+#include "core/indices/ivfflat.h"
+#include "core/utils/util.h"
 
 namespace vector_db
 {
@@ -96,8 +96,26 @@ bool collection::add_index( const std::string& name, index_type _index_type, par
     {
       case index_type::hnsw:
       {
-        auto hnsw_params = static_cast< indices::hnsw::params* >( params );
+        auto hnsw_params = dynamic_cast< indices::hnsw::params* >( params );
+        if ( !hnsw_params )
+        {
+          logger_->error( "Invalid params type for HNSW index" );
+          return false;
+        }
         auto _index = std::make_unique< indices::hnsw::index >( weak_from_this(), *hnsw_params );
+        _index->init();
+        indices_.emplace( name, std::move( _index ) );
+        return true;
+      }
+      case index_type::ivf_flat:
+      {
+        auto ivf_params = dynamic_cast< indices::ivf_flat::params* >( params );
+        if ( !ivf_params )
+        {
+          logger_->error( "Invalid params type for HNSW index" );
+          return false;
+        }
+        auto _index = std::make_unique< indices::ivf_flat::index >( weak_from_this(), *ivf_params );
         _index->init();
         indices_.emplace( name, std::move( _index ) );
         return true;
@@ -126,7 +144,7 @@ std::unordered_set< id_t, hash > collection::get_all_vector_ids() const
   {
     _ids.insert( id );
   }
-  return std::move( _ids );
+  return _ids;
 }
 
 bool collection::search_for_top_k( const float_vector& query_vector,

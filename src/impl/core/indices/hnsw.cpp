@@ -2,11 +2,11 @@
 // Created by Vivek Yamsani on 14/12/25.
 //
 
-#include "core/indices/hnsw.h"
-
 #include <random>
 #include <utility>
+
 #include "core/collection.h"
+#include "core/indices/hnsw.h"
 #include "core/utils/util.h"
 
 

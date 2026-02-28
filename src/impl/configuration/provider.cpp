@@ -1,11 +1,10 @@
 //
 // Created by Vivek Yamsani on 06/02/26.
 //
-#include "configuration/provider.h"
-
 #include <stdexcept>
 #include <toml.hpp>
 
+#include "configuration/provider.h"
 namespace vector_db
 {
 

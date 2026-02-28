@@ -2,6 +2,7 @@
 // Created by Vivek Yamsani on 18/12/25.
 //
 #include "core/indices/euclidean.h"
+
 #include "core/collection.h"
 #include "core/utils/util.h"
 

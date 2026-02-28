@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+
 #include "core/float_vector.h"
 #include "logger/logger.h"
 
@@ -22,6 +23,7 @@ enum class index_type : std::uint8_t
 
 struct params_t
 {
+  virtual ~params_t() = default;
 };
 
 class index_t

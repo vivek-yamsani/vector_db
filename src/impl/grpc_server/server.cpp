@@ -3,7 +3,9 @@
 //
 
 #include "grpc_server/server.h"
+
 #include "configuration/provider.h"
+#include "core/indices/ivfflat.h"
 #include "grpc_server/util.h"
 #include "logger/logger.h"
 
@@ -107,6 +109,7 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
 
   void handle_unknown_error() override
   {
+    state_ = state::PROCESSED;
     responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
   void process() override
@@ -161,8 +164,8 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
 
   void handle_unknown_error() override
   {
-    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
     state_ = state::PROCESSED;
+    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -487,10 +490,31 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
                 auto _status = db_ptr_->add_index( collection_name, index_name, index_type::hnsw, &hnsw_params );
                 status_ = status_to_grpc_status( _status );
                 reader.Finish( response_, status_, this );
+                state_ = state::PROCESSED;
                 break;
               }
               case vector_db::IndexType::IVF_FLAT:
+              {
+                auto ivf_params = indices::ivf_flat::params();
+                if ( request_.has_ivfflatparams() )
+                {
+                  auto& req_params = request_.ivfflatparams();
+                  ivf_params = indices::ivf_flat::params{ proto_to_db_dist( req_params.distancetype() ),
+                                                          static_cast< unsigned int >( req_params.k() ),
+                                                          static_cast< unsigned int >( req_params.nprobe() ),
+                                                          static_cast< size_t >( req_params.rebuildthreshold() ) };
+                }
+
+                auto _status = db_ptr_->add_index( collection_name, index_name, index_type::ivf_flat, &ivf_params );
+                status_ = status_to_grpc_status( _status );
+                reader.Finish( response_, status_, this );
+                state_ = state::PROCESSED;
+                break;
+              }
               default:
+                status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Unknown index type" );
+                reader.Finish( response_, status_, this );
+                state_ = state::PROCESSED;
                 break;
             }
           }
