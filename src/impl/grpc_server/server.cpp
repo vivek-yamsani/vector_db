@@ -296,19 +296,21 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
         {
           try
           {
-            std::vector< score_pair > _result;
             float_vector _query{ request_.queryvector_size(), request_.queryvector().data() };
-            const auto _status = db_ptr_->get_nearest_k( request_.collectionname(), _query, request_.top_k(), _result );
-            status_ = status_to_grpc_status( _status );
-            for ( auto& [ score, _id_vector ] : _result )
+            const auto result = db_ptr_->get_nearest_k( request_.collectionname(), _query, request_.top_k() );
+            status_ = status_to_grpc_status( result.status_ );
+            if ( result.is_success() && result.has_payload() )
             {
-              auto& [ _id, _vector_ptr ] = _id_vector;
-              auto _new_result = response_.add_results();
-              _new_result->set_score( static_cast< float >( score ) );
-              auto _new_vector = _new_result->mutable_vector();
-              _new_vector->set_id( _id );
-              for ( size_t it = 0; it < _vector_ptr->dimension_; ++it )
-                _new_vector->add_values( _vector_ptr->data_[ it ] );
+              for ( auto& [ score, _id_vector ] : result.value() )
+              {
+                auto& [ _id, _vector_ptr ] = _id_vector;
+                auto _new_result = response_.add_results();
+                _new_result->set_score( static_cast< float >( score ) );
+                auto _new_vector = _new_result->mutable_vector();
+                _new_vector->set_id( _id );
+                for ( size_t it = 0; it < _vector_ptr->dimension_; ++it )
+                  _new_vector->add_values( _vector_ptr->data_[ it ] );
+              }
             }
           }
           catch ( std::exception& e )
@@ -529,6 +531,86 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
           {
             handle_unknown_error();
             logger_->error( "Add index error: {}", e.what() );
+          }
+        } );
+  }
+};
+
+struct server::get_index_handler : public rpc_base< get_index_handler, IndexParamsRequest, IndexParamsResponse >
+{
+  grpc::ServerAsyncResponseWriter< IndexParamsResponse > responder_;
+  grpc::Status status_{};
+
+  get_index_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
+      : rpc_base( s, q, db, pool )
+      , responder_( &server_ctx_ )
+  {
+    service_->RequestGetIndexParams( &server_ctx_, &request_, &responder_, cq_, cq_, this );
+  }
+
+  void handle_unknown_error() override
+  {
+    state_ = state::PROCESSED;
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+  }
+
+  void process() override
+  {
+    if ( request_.collectionname().empty() || request_.indexname().empty() )
+    {
+      status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection/Index name cannot be empty." );
+      responder_.Finish( response_, status_, this );
+      state_ = state::PROCESSED;
+      return;
+    }
+
+    db_worker_pool_->submit(
+        [ this ]()
+        {
+          try
+          {
+            const auto collection_name = request_.collectionname();
+            const auto index_name = request_.indexname();
+            auto result = db_ptr_->get_index_params( collection_name, index_name );
+            status_ = status_to_grpc_status( result.status_ );
+            if ( result.is_success() && result.has_payload() )
+            {
+              switch ( result.value().first )
+              {
+                case vector_db::index_type::hnsw:
+                {
+                  auto* hnsw_params = dynamic_cast< const vector_db::indices::hnsw::params* >( result.value().second );
+                  auto _params = response_.mutable_hnswparams();
+                  _params->set_distancetype( db_dist_to_proto( hnsw_params->dist_type_ ) );
+                  _params->set_m( hnsw_params->M_ );
+                  _params->set_efconstruction( hnsw_params->ef_construction_ );
+                  _params->set_efsearch( hnsw_params->ef_search_ );
+                  break;
+                }
+                case vector_db::index_type::ivf_flat:
+                {
+                  auto* ivf_params = dynamic_cast< const vector_db::indices::ivf_flat::params* >( result.value().second );
+                  auto _params = response_.mutable_ivfflatparams();
+                  _params->set_distancetype( db_dist_to_proto( ivf_params->dist_type_ ) );
+                  _params->set_k( ivf_params->k_ );
+                  _params->set_nprobe( ivf_params->n_probe_ );
+                  _params->set_rebuildthreshold( ivf_params->rebuild_threshold_ );
+                  break;
+                }
+                case vector_db::index_type::unknown:
+                {
+                  status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Unknown index type" );
+                  break;
+                }
+              }
+            }
+            responder_.Finish( response_, status_, this );
+            state_ = state::PROCESSED;
+          }
+          catch ( std::exception& e )
+          {
+            handle_unknown_error();
+            logger_->error( "Get index params error: {}", e.what() );
           }
         } );
   }

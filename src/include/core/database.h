@@ -27,21 +27,22 @@ public:
 
   status add_vectors( const std::string& collection_name, std::vector< std::pair< id_t, float_vector > > vectors );
 
-  status get_all_collections( std::vector< std::pair< std::string, collection_properties > >& collections );
+  result< std::vector< std::pair< std::string, collection_properties > > > get_all_collections();
 
-  status get_collection_info( const std::string& collection_name, collection_properties& collection_data );
+  result< collection_properties > get_collection_info( const std::string& collection_name );
 
   status add_collection( const std::string& collection_name, unsigned int dimension );
 
   status delete_collection( const std::string& collection_name );
 
-  status get_nearest_k( const std::string& collection_name,
-                        const float_vector& query,
-                        unsigned int k,
-                        std::vector< score_pair >& result );
+  result< std::vector< score_pair > > get_nearest_k( const std::string& collection_name,
+                                                       const float_vector& query,
+                                                       unsigned int k );
 
   status delete_vectors( const std::string& collection_name, const std::vector< id_t >& _ids );
 
   status add_index( const std::string& collection_name, const std::string& index_name, index_type index_type, params_t* params );
+
+  result< std::pair< index_type, const params_t* >> get_index_params( const std::string& collection_name, const std::string& index_name );
 };
 }  // namespace vector_db

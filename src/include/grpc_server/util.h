@@ -33,6 +33,21 @@ inline distance::dist_type proto_to_db_dist( const DistanceType& _algo )
   }
 }
 
+inline DistanceType db_dist_to_proto( const distance::dist_type& _algo )
+{
+  switch ( _algo )
+  {
+    case distance::dist_type::cosine:
+      return DistanceType::COSINE;
+    case distance::dist_type::euclidean:
+      return DistanceType::EUCLIDEAN;
+    case distance::dist_type::inner_product:
+      return DistanceType::INNER_PRODUCT;
+    default:
+      return DistanceType::EUCLIDEAN;  // default fallback
+  }
+}
+
 inline grpc::Status status_to_grpc_status( const status s )
 {
   switch ( s )
@@ -53,6 +68,8 @@ inline grpc::Status status_to_grpc_status( const status s )
       return { grpc::INVALID_ARGUMENT, "collection name contains invalid characters" };
     case status::vector_dimension_mismatch:
       return { grpc::INVALID_ARGUMENT, "vector dimension mismatch with collection" };
+    case status::index_does_not_exist:
+      return { grpc::NOT_FOUND, "index does not exist" };
     default:
       break;
   }

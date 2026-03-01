@@ -38,28 +38,29 @@ status database::add_vectors( const std::string& collection_name, std::vector< s
   return status::success;
 }
 
-status database::get_all_collections( std::vector< std::pair< std::string, collection_properties > >& collections )
+result< std::vector< std::pair< std::string, collection_properties > > > database::get_all_collections()
 {
   std::shared_lock< std::shared_mutex > lock( mutex_ );
+  std::vector< std::pair< std::string, collection_properties > > collections;
   collections.reserve( collections_.size() );
   for ( auto& [ id, collection ] : collections_ )
   {
     collection_properties data( collection->dimension_, collection->name_ );
     collections.emplace_back( id, data );
   }
-  return status::success;
+  return { status::success, std::move( collections ) };
 }
 
-status database::get_collection_info( const std::string& collection_name, collection_properties& collection_data )
+result< collection_properties > database::get_collection_info( const std::string& collection_name )
 {
   if ( const auto _status = is_collection_name_valid( collection_name ); _status != status::success )
-    return _status;
+    return { _status };
   std::shared_lock< std::shared_mutex > lock( mutex_ );
   const auto it = collections_.find( collection_name );
   if ( it == collections_.end() )
-    return status::collection_does_not_exist;
-  collection_data = collection_properties( it->second->dimension_, it->second->name_ );
-  return status::success;
+    return { status::collection_does_not_exist };
+  collection_properties collection_data( it->second->dimension_, it->second->name_ );
+  return { status::success, std::move( collection_data ) };
 }
 
 status database::add_collection( const std::string& collection_name, unsigned int dimension )
@@ -85,19 +86,19 @@ status database::delete_collection( const std::string& collection_name )
   return status::success;
 }
 
-status database::get_nearest_k( const std::string& collection_name,
-                                const float_vector& query,
-                                const unsigned int k,
-                                std::vector< score_pair >& result )
+result< std::vector< score_pair > > database::get_nearest_k( const std::string& collection_name,
+                                                             const float_vector& query,
+                                                             const unsigned int k )
 {
   if ( const auto _status = is_collection_name_valid( collection_name ); _status != status::success )
-    return _status;
+    return { _status };
   std::shared_lock< std::shared_mutex > lock( mutex_ );
   const auto it = collections_.find( collection_name );
   if ( it == collections_.end() )
-    return status::collection_does_not_exist;
-  it->second->search_for_top_k( query, k, result );
-  return status::success;
+    return { status::collection_does_not_exist };
+  std::vector< score_pair > search_result;
+  it->second->search_for_top_k( query, k, search_result );
+  return { status::success, std::move( search_result ) };
 }
 
 status database::delete_vectors( const std::string& collection_name, const std::vector< id_t >& _ids )
@@ -127,6 +128,21 @@ status database::add_index( const std::string& collection_name,
   it->second->add_index( index_name, index_type, params );
 
   return status::success;
+}
+
+result< std::pair< index_type, const params_t* > > database::get_index_params( const std::string& collection_name,
+                                                                               const std::string& index_name )
+{
+  if ( const auto _status = is_collection_name_valid( collection_name ); _status != status::success )
+    return result< std::pair< index_type, const params_t* > >( _status );
+  std::shared_lock< std::shared_mutex > lock( mutex_ );
+  const auto it = collections_.find( collection_name );
+  if ( it == collections_.end() )
+    return result< std::pair< index_type, const params_t* > >( status::collection_does_not_exist );
+
+  auto params_pair = it->second->get_index_params( index_name );
+  return params_pair.second ? result( status::success, params_pair )
+                            : result< std::pair< index_type, const params_t* > >( status::index_does_not_exist );
 }
 
 }  // namespace vector_db

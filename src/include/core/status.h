@@ -2,6 +2,7 @@
 // Created by Vivek Yamsani on 18/12/25.
 //
 #pragma once
+#include <optional>
 namespace vector_db
 {
 enum class status : uint8_t
@@ -14,7 +15,23 @@ enum class status : uint8_t
   collection_name_too_long = 5,
   collection_name_invalid_characters = 6,
   vector_dimension_mismatch = 7,
+  index_does_not_exist = 8,
   internal_error = 255
+};
+
+template < typename T >
+struct result
+{
+  status status_;
+  std::optional< T > payload_;
+
+  result( status s ) : status_( s ), payload_( std::nullopt ) {}
+  result( status s, T data ) : status_( s ), payload_( std::move( data ) ) {}
+
+  bool is_success() const { return status_ == status::success; }
+  bool has_payload() const { return payload_.has_value(); }
+  T& value() { return payload_.value(); }
+  const T& value() const { return payload_.value(); }
 };
 
 
@@ -38,6 +55,8 @@ inline std::string status_to_string( const status s )
       return "collection name contains invalid characters";
     case status::vector_dimension_mismatch:
       return "vector dimension mismatch with collection";
+    case status::index_does_not_exist:
+      return "index does not exist";
     case status::internal_error:
       return "internal error";
   }

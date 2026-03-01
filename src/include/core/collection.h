@@ -58,6 +58,8 @@ public:
 
   // Accessor for index to fetch data stored in a collection without copying
   std::optional< float_vector > get_vector_by_id( id_t _id ) const;
+
+  std::pair< index_type, const params_t* > get_index_params( const std::string& index_name ) const;
 };
 
 }  // namespace vector_db

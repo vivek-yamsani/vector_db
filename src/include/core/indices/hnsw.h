@@ -21,6 +21,7 @@ namespace vector_db::indices::hnsw
 struct params : params_t
 {
   distance::ptr distance_{ nullptr };
+  distance::dist_type dist_type_{ distance::dist_type::cosine };
   unsigned int M_;                // max neighbors per node in other layers
   unsigned int M0_;               // max neighbors per node in layer 0
   unsigned int ef_construction_;  // candidate list size during construction
@@ -31,11 +32,12 @@ struct params : params_t
                    const unsigned int _m = 16,
                    const unsigned int _ef_construction = 64,
                    const unsigned int _ef_search = 32 )
-      : M_( _m )
+      : dist_type_( _dist_type )
+      , M_( _m )
       , ef_construction_( _ef_construction )
       , ef_search_( _ef_search )
   {
-    distance_ = get_distance_instance( _dist_type );
+    distance_ = get_distance_instance( dist_type_ );
     if ( !distance_ )
       throw std::runtime_error( "Unknown distance type" );
     ml_ = 1.0 / std::log( M_ );
@@ -91,6 +93,8 @@ public:
   bool search_for_top_k( const float_vector& query_vector, unsigned int k, std::vector< score_pair >& results ) override;
 
   index_type get_index_type() const override { return index_type::hnsw; }
+
+  const params* get_params() const override { return &params_; }
 
   // Incremental update hooks; for now we invalidate and rebuild lazily
   void on_vectors_added( const std::vector< id_t >& new_ids ) override;

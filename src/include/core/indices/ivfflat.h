@@ -53,6 +53,8 @@ public:
   bool search_for_top_k( const float_vector& query_vector, unsigned int k, std::vector< score_pair >& results ) override;
   index_type get_index_type() const override { return index_type::ivf_flat; }
 
+  const params* get_params() const override { return &params_; }
+
   void on_vectors_added( const std::vector< id_t >& new_ids ) override;
   void on_vectors_removed( const std::vector< id_t >& removed_ids ) override;
 

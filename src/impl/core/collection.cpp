@@ -164,4 +164,13 @@ bool collection::search_for_top_k( const float_vector& query_vector,
   return it->second->search_for_top_k( query_vector, k, results );
 }
 
+std::pair< index_type, const params_t* > collection::get_index_params( const std::string& index_name ) const
+{
+  std::shared_lock< std::shared_mutex > lock( idx_mutex_ );
+  const auto it = indices_.find( index_name );
+  if ( it == indices_.end() )
+    return { index_type::unknown, nullptr };
+  return { it->second->get_index_type(), it->second->get_params() };
+}
+
 }  // namespace vector_db

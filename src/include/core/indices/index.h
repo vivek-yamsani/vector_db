@@ -55,6 +55,8 @@ public:
   virtual bool search_for_top_k( const float_vector& query_vector, unsigned int k, std::vector< score_pair >& results ) = 0;
   virtual index_type get_index_type() const { return index_type::unknown; }
 
+  virtual const params_t* get_params() const { return nullptr; }
+
   // Incremental update hooks (default no-op)
   virtual void on_vectors_added( const std::vector< id_t >& /*new_ids*/ ) {}
   virtual void on_vectors_removed( const std::vector< id_t >& /*removed_ids*/ ) {}
