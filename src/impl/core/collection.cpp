@@ -241,6 +241,7 @@ std::shared_ptr< collection > collection::deserialize( std::istream& is )
     auto index = index_t::deserialize( is, col );
     if ( index )
     {
+      index->init();
       col->indices_[ idx_name ] = std::move( index );
     }
   }

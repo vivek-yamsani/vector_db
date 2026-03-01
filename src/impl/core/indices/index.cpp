@@ -17,14 +17,12 @@ std::unique_ptr< index_t > index_t::deserialize( std::istream& is, const std::we
   {
     auto params = indices::hnsw::params::deserialize( is );
     auto index = std::make_unique< indices::hnsw::index >( col_ptr, params );
-    index->init();
     return index;
   }
   else if ( type == index_type::ivf_flat )
   {
     auto params = indices::ivf_flat::params::deserialize( is );
     auto index = std::make_unique< indices::ivf_flat::index >( col_ptr, params );
-    index->init();
     return index;
   }
 

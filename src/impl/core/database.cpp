@@ -160,7 +160,7 @@ status database::save()
     {
       std::filesystem::path file_path = storage_path;
       file_path /= name;
-      file_path.replace_extension( ".db" );
+      file_path.replace_extension( ".db.tmp" );
       std::ofstream ofs( file_path.string(), std::ios::binary );
       if ( !ofs )
       {
@@ -168,6 +168,9 @@ status database::save()
         continue;
       }
       col->serialize( ofs );
+      ofs.close();
+      auto _to_path = file_path;
+      std::filesystem::rename( file_path, _to_path.replace_extension( "" ) );
     }
     return status::success;
   }
