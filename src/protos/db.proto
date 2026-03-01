@@ -74,16 +74,16 @@ message AddIndexRequest {
 
 message HNSWParams {
   DistanceType distanceType = 1;
-  int32 m = 2;
-  int32 efConstruction = 3;
-  int32 efSearch = 4;
+  uint32 m = 2;
+  uint32 efConstruction = 3;
+  uint32 efSearch = 4;
 }
 
 message IVFFlatParams {
   DistanceType distanceType = 1;
-  int32 k = 2;
-  int32 nProbe = 3;
-  int64 rebuildThreshold = 4;
+  uint32 k = 2;
+  uint32 nProbe = 3;
+  uint32 rebuildThreshold = 4;
 }
 
 message DelVectorRequest {
