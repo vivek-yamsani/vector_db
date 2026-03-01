@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,9 @@ struct float_vector
   bool operator==( const float_vector& other ) const;
 
   void add_metadata( const std::string& key, const std::string& value );
+
+  void serialize( std::ostream& os ) const;
+  static float_vector deserialize( std::istream& is );
 };
 
 using id_t = unsigned long long;

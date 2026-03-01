@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include <fstream>
 #include <iostream>
 #include <shared_mutex>
 #include <unordered_map>
@@ -60,6 +61,9 @@ public:
   std::optional< float_vector > get_vector_by_id( id_t _id ) const;
 
   std::pair< index_type, const params_t* > get_index_params( const std::string& index_name ) const;
+
+  void serialize( std::ostream& os ) const;
+  static std::shared_ptr< collection > deserialize( std::istream& is );
 };
 
 }  // namespace vector_db

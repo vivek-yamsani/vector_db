@@ -2,6 +2,7 @@ find_package(spdlog REQUIRED)
 
 add_library(core STATIC
         float_vector.cpp
+        indices/index.cpp
         indices/ivfflat.cpp
         indices/euclidean.cpp
         indices/hnsw.cpp

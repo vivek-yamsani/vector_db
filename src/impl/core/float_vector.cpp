@@ -69,4 +69,69 @@ void float_vector::add_metadata( const std::string& key, const std::string& valu
     metadata_ = std::make_unique< std::vector< std::pair< std::string, std::string > > >();
   metadata_->emplace_back( key, value );
 }
+
+void float_vector::serialize( std::ostream& os ) const
+{
+  os.write( reinterpret_cast< const char* >( &dimension_ ), sizeof( dimension_ ) );
+  if ( dimension_ > 0 )
+  {
+    os.write( reinterpret_cast< const char* >( data_.get() ), static_cast< std::streamsize >( dimension_ ) * sizeof( float ) );
+  }
+
+  bool has_metadata = ( metadata_ != nullptr );
+  os.write( reinterpret_cast< const char* >( &has_metadata ), sizeof( has_metadata ) );
+  if ( has_metadata )
+  {
+    uint32_t size = static_cast< uint32_t >( metadata_->size() );
+    os.write( reinterpret_cast< const char* >( &size ), sizeof( size ) );
+    for ( const auto& [ key, value ] : *metadata_ )
+    {
+      uint32_t key_len = static_cast< uint32_t >( key.length() );
+      os.write( reinterpret_cast< const char* >( &key_len ), sizeof( key_len ) );
+      os.write( key.data(), key_len );
+
+      uint32_t val_len = static_cast< uint32_t >( value.length() );
+      os.write( reinterpret_cast< const char* >( &val_len ), sizeof( val_len ) );
+      os.write( value.data(), val_len );
+    }
+  }
+}
+
+float_vector float_vector::deserialize( std::istream& is )
+{
+  int dimension;
+  is.read( reinterpret_cast< char* >( &dimension ), sizeof( dimension ) );
+  float_vector vec;
+  vec.dimension_ = dimension;
+  if ( dimension > 0 )
+  {
+    vec.data_ = std::make_unique< float[] >( dimension );
+    is.read( reinterpret_cast< char* >( vec.data_.get() ), static_cast< std::streamsize >( dimension ) * sizeof( float ) );
+  }
+
+  bool has_metadata;
+  is.read( reinterpret_cast< char* >( &has_metadata ), sizeof( has_metadata ) );
+  if ( has_metadata )
+  {
+    uint32_t size;
+    is.read( reinterpret_cast< char* >( &size ), sizeof( size ) );
+    vec.metadata_ = std::make_unique< std::vector< std::pair< std::string, std::string > > >();
+    vec.metadata_->reserve( size );
+    for ( uint32_t i = 0; i < size; ++i )
+    {
+      uint32_t key_len;
+      is.read( reinterpret_cast< char* >( &key_len ), sizeof( key_len ) );
+      std::string key( key_len, '\0' );
+      is.read( key.data(), key_len );
+
+      uint32_t val_len;
+      is.read( reinterpret_cast< char* >( &val_len ), sizeof( val_len ) );
+      std::string value( val_len, '\0' );
+      is.read( value.data(), val_len );
+
+      vec.metadata_->emplace_back( std::move( key ), std::move( value ) );
+    }
+  }
+  return vec;
+}
 }  // namespace vector_db

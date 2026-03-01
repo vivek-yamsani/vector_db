@@ -52,6 +52,30 @@ struct params : params_t
     ef_search_ = 0;
     ml_ = 0.0;
   }
+
+  void serialize( std::ostream& os ) const override
+  {
+    os.write( reinterpret_cast< const char* >( &dist_type_ ), sizeof( dist_type_ ) );
+    os.write( reinterpret_cast< const char* >( &M_ ), sizeof( M_ ) );
+    os.write( reinterpret_cast< const char* >( &ef_construction_ ), sizeof( ef_construction_ ) );
+    os.write( reinterpret_cast< const char* >( &ef_search_ ), sizeof( ef_search_ ) );
+  }
+
+  static params deserialize( std::istream& is )
+  {
+    distance::dist_type dist_type;
+    unsigned int M, ef_construction, ef_search;
+    is.read( reinterpret_cast< char* >( &dist_type ), sizeof( dist_type ) );
+    is.read( reinterpret_cast< char* >( &M ), sizeof( M ) );
+    is.read( reinterpret_cast< char* >( &ef_construction ), sizeof( ef_construction ) );
+    is.read( reinterpret_cast< char* >( &ef_search ), sizeof( ef_search ) );
+    return params( dist_type, M, ef_construction, ef_search );
+  }
+
+  std::unique_ptr< params_t > clone() const override
+  {
+    return std::make_unique< params >( dist_type_, M_, ef_construction_, ef_search_ );
+  }
 };
 
 // Layered HNSW graph index for KNN over float_vector
@@ -95,6 +119,8 @@ public:
   index_type get_index_type() const override { return index_type::hnsw; }
 
   const params* get_params() const override { return &params_; }
+
+  void serialize( std::ostream& os ) const override { params_.serialize( os ); }
 
   // Incremental update hooks; for now we invalidate and rebuild lazily
   void on_vectors_added( const std::vector< id_t >& new_ids ) override;

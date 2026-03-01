@@ -18,3 +18,7 @@ max_files = 3
 thread_pool_queue_size = 8192
 thread_pool_threads = 2
 flush_interval_seconds = 1
+
+[storage]
+enabled = true
+path = "data"

@@ -24,6 +24,8 @@ enum class index_type : std::uint8_t
 struct params_t
 {
   virtual ~params_t() = default;
+  virtual void serialize( std::ostream& os ) const = 0;
+  virtual std::unique_ptr< params_t > clone() const = 0;
 };
 
 class index_t
@@ -56,6 +58,10 @@ public:
   virtual index_type get_index_type() const { return index_type::unknown; }
 
   virtual const params_t* get_params() const { return nullptr; }
+
+  // Serialization
+  virtual void serialize( std::ostream& os ) const = 0;
+  static std::unique_ptr< index_t > deserialize( std::istream& is, const std::weak_ptr< collection >& col_ptr );
 
   // Incremental update hooks (default no-op)
   virtual void on_vectors_added( const std::vector< id_t >& /*new_ids*/ ) {}

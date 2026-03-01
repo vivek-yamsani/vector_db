@@ -92,7 +92,7 @@ struct rpc_base : public rpc_facade
         state_ = state::PROCESSED;
         break;
     }
-  };
+  }
 };
 
 // CreateCollection unary
@@ -170,8 +170,10 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
 
   void process() override
   {
+    logger_->info( "Delete collection request: name {}", request_.collectionname() );
     if ( request_.collectionname().empty() )
     {
+      logger_->warn( "Delete collection failed: collection name is empty" );
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
       state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
@@ -184,6 +186,7 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
           {
             const auto _status = db_ptr_->delete_collection( request_.collectionname() );
             status_ = status_to_grpc_status( _status );
+            logger_->info< int >( "Delete collection response: code {}", status_.error_code() );
           }
           catch ( std::exception& e )
           {
@@ -216,8 +219,10 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
 
   void process() override
   {
+    logger_->info( "Upsert request: collection {}, vectors {}", request_.collectionname(), request_.vectors_size() );
     if ( request_.collectionname().empty() )
     {
+      logger_->warn( "Delete collection failed: collection name is empty" );
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
       state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
@@ -225,6 +230,7 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
     }
     if ( request_.vectors_size() == 0 )
     {
+      logger_->warn( "Upsert failed: no vectors provided" );
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector is required for upsert." );
       state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
@@ -247,6 +253,7 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
             }
             const auto _status = db_ptr_->add_vectors( request_.collectionname(), _vectors );
             status_ = status_to_grpc_status( _status );
+            logger_->info< int >( "Upsert response: code {}", status_.error_code() );
           }
           catch ( std::exception& e )
           {
@@ -279,8 +286,13 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
 
   void process() override
   {
+    logger_->info( "Search request: collection {}, top_k {}, query_dim {}",
+                   request_.collectionname(),
+                   request_.top_k(),
+                   request_.queryvector_size() );
     if ( request_.collectionname().empty() )
     {
+      logger_->warn( "Search failed: collection name is empty" );
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
       state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
@@ -288,6 +300,7 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
     }
     if ( request_.top_k() <= 0 )
     {
+      logger_->warn( "Search failed: top_k must be greater than 0" );
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "top_k must be greater than 0." );
       state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
@@ -313,11 +326,16 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
                 for ( size_t it = 0; it < _vector_ptr->dimension_; ++it )
                   _new_vector->add_values( _vector_ptr->data_[ it ] );
               }
+              logger_->info( "Search response: found {} results", result.value().size() );
+            }
+            else
+            {
+              logger_->warn< int >( "Search failed: code {}", status_.error_code() );
             }
           }
           catch ( std::exception& e )
           {
-            logger_->error( "Get nearest k error: {}", e.what() );
+            logger_->error( "Search error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
 
@@ -613,8 +631,8 @@ struct server::get_index_handler : public rpc_base< get_index_handler, IndexPara
           }
           catch ( std::exception& e )
           {
-            handle_unknown_error();
             logger_->error( "Get index params error: {}", e.what() );
+            handle_unknown_error();
           }
         } );
   }
@@ -632,6 +650,10 @@ server::server()
 
   address_ = ip + ":" + std::to_string( port );
   db_ptr_ = std::make_unique< database >();
+  if ( config_provider_->get_bool( "storage", "enabled" ).value_or( true ) )
+  {
+    db_ptr_->load();
+  }
   db_worker_pool_ = std::make_unique< worker_pool >( db_worker_pool_size );
   logger_ = logger_factory::create( "server" );
   logger_->set_level( _log_level );
@@ -678,6 +700,13 @@ void server::shutdown()
   if ( !running_ )
     return;
   running_ = false;
+
+  const auto config_provider_ = config_provider::get_instance();
+  if ( db_ptr_ && config_provider_->get_bool( "storage", "enabled" ).value_or( true ) )
+  {
+    db_ptr_->save();
+  }
+
   if ( db_worker_pool_ )
     db_worker_pool_->shutdown();
   if ( server_ )

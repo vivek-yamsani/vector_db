@@ -173,4 +173,77 @@ std::pair< index_type, const params_t* > collection::get_index_params( const std
   return { it->second->get_index_type(), it->second->get_params() };
 }
 
+void collection::serialize( std::ostream& os ) const
+{
+  std::shared_lock vec_lock( vec_mutex_ );
+  std::shared_lock idx_lock( idx_mutex_ );
+
+  const auto name_len = static_cast< uint32_t >( name_.length() );
+  os.write( reinterpret_cast< const char* >( &name_len ), sizeof( name_len ) );
+  os.write( name_.data(), name_len );
+
+  os.write( reinterpret_cast< const char* >( &dimension_ ), sizeof( dimension_ ) );
+
+  auto vec_count = static_cast< uint32_t >( vectors_.size() );
+  os.write( reinterpret_cast< const char* >( &vec_count ), sizeof( vec_count ) );
+  for ( const auto& [ id, vec_ptr ] : vectors_ )
+  {
+    os.write( reinterpret_cast< const char* >( &id ), sizeof( id ) );
+    vec_ptr->serialize( os );
+  }
+
+  auto idx_count = static_cast< uint32_t >( indices_.size() );
+  os.write( reinterpret_cast< const char* >( &idx_count ), sizeof( idx_count ) );
+  for ( const auto& [ idx_name, index ] : indices_ )
+  {
+    index_type type = index->get_index_type();
+    if ( type == index_type::unknown )
+      continue;
+    auto idx_name_len = static_cast< uint32_t >( idx_name.length() );
+    os.write( reinterpret_cast< const char* >( &idx_name_len ), sizeof( idx_name_len ) );
+    os.write( idx_name.data(), idx_name_len );
+
+    os.write( reinterpret_cast< const char* >( &type ), sizeof( type ) );
+    index->serialize( os );
+  }
+}
+
+std::shared_ptr< collection > collection::deserialize( std::istream& is )
+{
+  uint32_t name_len;
+  is.read( reinterpret_cast< char* >( &name_len ), sizeof( name_len ) );
+  std::string name( name_len, '\0' );
+  is.read( name.data(), name_len );
+
+  unsigned int dimension;
+  is.read( reinterpret_cast< char* >( &dimension ), sizeof( dimension ) );
+
+  auto col = std::make_shared< collection >( dimension, name );
+
+  uint32_t vec_count;
+  is.read( reinterpret_cast< char* >( &vec_count ), sizeof( vec_count ) );
+  for ( uint32_t i = 0; i < vec_count; ++i )
+  {
+    id_t id;
+    is.read( reinterpret_cast< char* >( &id ), sizeof( id ) );
+    col->vectors_.emplace( id, std::make_unique< float_vector >( float_vector::deserialize( is ) ) );
+  }
+
+  uint32_t idx_count;
+  is.read( reinterpret_cast< char* >( &idx_count ), sizeof( idx_count ) );
+  for ( uint32_t i = 0; i < idx_count; ++i )
+  {
+    uint32_t idx_name_len;
+    is.read( reinterpret_cast< char* >( &idx_name_len ), sizeof( idx_name_len ) );
+    std::string idx_name( idx_name_len, '\0' );
+    is.read( idx_name.data(), idx_name_len );
+
+    auto index = index_t::deserialize( is, col );
+    if ( index )
+    {
+      col->indices_[ idx_name ] = std::move( index );
+    }
+  }
+  return col;
+}
 }  // namespace vector_db

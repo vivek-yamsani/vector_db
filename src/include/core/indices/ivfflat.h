@@ -28,6 +28,31 @@ struct params : params_t
       , rebuild_threshold_( rebuild_threshold )
   {
   }
+
+  void serialize( std::ostream& os ) const override
+  {
+    os.write( reinterpret_cast< const char* >( &dist_type_ ), sizeof( dist_type_ ) );
+    os.write( reinterpret_cast< const char* >( &k_ ), sizeof( k_ ) );
+    os.write( reinterpret_cast< const char* >( &n_probe_ ), sizeof( n_probe_ ) );
+    os.write( reinterpret_cast< const char* >( &rebuild_threshold_ ), sizeof( rebuild_threshold_ ) );
+  }
+
+  static params deserialize( std::istream& is )
+  {
+    distance::dist_type dist_type;
+    unsigned int k, n_probe;
+    size_t rebuild_threshold;
+    is.read( reinterpret_cast< char* >( &dist_type ), sizeof( dist_type ) );
+    is.read( reinterpret_cast< char* >( &k ), sizeof( k ) );
+    is.read( reinterpret_cast< char* >( &n_probe ), sizeof( n_probe ) );
+    is.read( reinterpret_cast< char* >( &rebuild_threshold ), sizeof( rebuild_threshold ) );
+    return params( dist_type, k, n_probe, rebuild_threshold );
+  }
+
+  std::unique_ptr< params_t > clone() const override
+  {
+    return std::make_unique< params >( dist_type_, k_, n_probe_, rebuild_threshold_ );
+  }
 };
 
 class index : public index_t
@@ -54,6 +79,8 @@ public:
   index_type get_index_type() const override { return index_type::ivf_flat; }
 
   const params* get_params() const override { return &params_; }
+
+  void serialize( std::ostream& os ) const override { params_.serialize( os ); }
 
   void on_vectors_added( const std::vector< id_t >& new_ids ) override;
   void on_vectors_removed( const std::vector< id_t >& removed_ids ) override;

@@ -44,5 +44,8 @@ public:
   status add_index( const std::string& collection_name, const std::string& index_name, index_type index_type, params_t* params );
 
   result< std::pair< index_type, const params_t* >> get_index_params( const std::string& collection_name, const std::string& index_name );
+
+  status save();
+  status load();
 };
 }  // namespace vector_db

@@ -145,4 +145,75 @@ result< std::pair< index_type, const params_t* > > database::get_index_params( c
                             : result< std::pair< index_type, const params_t* > >( status::index_does_not_exist );
 }
 
+status database::save()
+{
+  try
+  {
+    auto storage_path = config_provider::get_instance()->get_string( "storage", "path" ).value_or( "data" );
+    if ( !std::filesystem::exists( storage_path ) )
+    {
+      std::filesystem::create_directories( storage_path );
+    }
+
+    std::shared_lock lock( mutex_ );
+    for ( const auto& [ name, col ] : collections_ )
+    {
+      std::filesystem::path file_path = storage_path;
+      file_path /= name;
+      file_path.replace_extension( ".db" );
+      std::ofstream ofs( file_path.string(), std::ios::binary );
+      if ( !ofs )
+      {
+        logger_->error( "Failed to open file for saving collection: {}", file_path.string() );
+        continue;
+      }
+      col->serialize( ofs );
+    }
+    return status::success;
+  }
+  catch ( std::exception& e )
+  {
+    logger_->error( "Failed to save database: {}", e.what() );
+    return status::internal_error;
+  }
+}
+
+status database::load()
+{
+  try
+  {
+    auto storage_path = config_provider::get_instance()->get_string( "storage", "path" ).value_or( "data" );
+    if ( !std::filesystem::exists( storage_path ) )
+    {
+      return status::success;
+    }
+
+    std::unique_lock lock( mutex_ );
+    for ( const auto& entry : std::filesystem::directory_iterator( storage_path ) )
+    {
+      if ( entry.is_regular_file() && entry.path().extension() == ".db" )
+      {
+        std::ifstream ifs( entry.path().string(), std::ios::binary );
+        if ( !ifs )
+        {
+          logger_->error( "Failed to open file for loading collection: {}", entry.path().string() );
+          continue;
+        }
+        auto col = collection::deserialize( ifs );
+        if ( col )
+        {
+          collections_[ col->name_ ] = col;
+          logger_->info( "Loaded collection: {} from {}", col->name_, entry.path().string() );
+        }
+      }
+    }
+    return status::success;
+  }
+  catch ( std::exception& e )
+  {
+    logger_->error( "Failed to load database: {}", e.what() );
+    return status::internal_error;
+  }
+}
+
 }  // namespace vector_db
