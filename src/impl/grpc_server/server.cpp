@@ -98,19 +98,19 @@ struct rpc_base : public rpc_facade
 // CreateCollection unary
 struct server::create_collection_handler : public rpc_base< create_collection_handler, CreateCollectionRequest, EmptyResponse >
 {
-  grpc::ServerAsyncResponseWriter< EmptyResponse > responder;
+  grpc::ServerAsyncResponseWriter< EmptyResponse > responder_;
 
   create_collection_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , responder( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestCreateCollection( &server_ctx_, &request_, &responder, cq_, cq_, this );
+    service_->RequestCreateCollection( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
     state_ = state::PROCESSED;
-    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
   void process() override
   {
@@ -118,7 +118,7 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
     if ( request_.name().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -126,7 +126,7 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
     if ( request_.dimension() <= 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Vector dimension must be greater than 0." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -144,7 +144,7 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
           logger_->info< int >( "Create collection response: code {}", status_.error_code() );
-          responder.Finish( response_, status_, this );
+          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
         } );
   }
@@ -153,19 +153,19 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
 // DeleteCollection unary
 struct server::delete_collection_handler : public rpc_base< delete_collection_handler, DeleteCollectionRequest, EmptyResponse >
 {
-  grpc::ServerAsyncResponseWriter< EmptyResponse > responder;
+  grpc::ServerAsyncResponseWriter< EmptyResponse > responder_;
 
   delete_collection_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , responder( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestDeleteCollection( &server_ctx_, &request_, &responder, cq_, cq_, this );
+    service_->RequestDeleteCollection( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
     state_ = state::PROCESSED;
-    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -173,7 +173,7 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -190,7 +190,7 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
             logger_->error( "Delete collection error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
-          responder.Finish( response_, status_, this );
+          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
         } );
   }
@@ -199,18 +199,18 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
 // Upsert unary
 struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, EmptyResponse >
 {
-  grpc::ServerAsyncResponseWriter< EmptyResponse > responder;
+  grpc::ServerAsyncResponseWriter< EmptyResponse > responder_;
 
   upsert_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , responder( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestUpsert( &server_ctx_, &request_, &responder, cq_, cq_, this );
+    service_->RequestUpsert( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
-    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
     state_ = state::PROCESSED;
   }
 
@@ -219,14 +219,14 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
     if ( request_.vectors_size() == 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector is required for upsert." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -253,7 +253,7 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
             logger_->error( "Upsert error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
-          responder.Finish( response_, status_, this );
+          responder_.Finish( response_, status_, this );
         } );
   }
 };
@@ -261,18 +261,18 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
 // Search unary
 struct server::search_handler : public rpc_base< search_handler, SearchRequest, SearchResponse >
 {
-  grpc::ServerAsyncResponseWriter< SearchResponse > responder;
+  grpc::ServerAsyncResponseWriter< SearchResponse > responder_;
 
   search_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , responder( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestSearch( &server_ctx_, &request_, &responder, cq_, cq_, this );
+    service_->RequestSearch( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
-    responder.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -280,14 +280,14 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
     if ( request_.top_k() <= 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "top_k must be greater than 0." );
-      responder.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -317,7 +317,7 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
 
-          responder.Finish( response_, status_, this );
+          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
         } );
   }
@@ -326,26 +326,26 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
 // StreamUpsert client-streaming -> single response
 struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, UpsertRequest, EmptyResponse >
 {
-  grpc::ServerAsyncReader< EmptyResponse, UpsertRequest > reader;
+  grpc::ServerAsyncReader< EmptyResponse, UpsertRequest > reader_;
 
   grpc::Status status_{ grpc::StatusCode::INTERNAL, "Internal error" };
 
   stream_upsert_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , reader( &server_ctx_ )
+      , reader_( &server_ctx_ )
   {
-    service_->RequestStreamUpsert( &server_ctx_, &reader, cq_, cq_, this );
+    service_->RequestStreamUpsert( &server_ctx_, &reader_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
-    reader.Finish( response_, status_, this );
+    reader_.Finish( response_, status_, this );
     state_ = state::PROCESSED;
   }
 
   bool do_read() override
   {
-    reader.Read( &request_, this );
+    reader_.Read( &request_, this );
     state_ = state::READ;
     return false;
   }
@@ -371,7 +371,7 @@ struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, U
             status_ = status_to_grpc_status( _status );
             if ( _status != status::success )
             {
-              reader.Finish( response_, status_, this );
+              reader_.Finish( response_, status_, this );
               state_ = state::PROCESSED;
             }
             else
@@ -390,20 +390,20 @@ struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, U
 
 struct server::delete_vector_handler : public rpc_base< delete_vector_handler, DelVectorRequest, EmptyResponse >
 {
-  grpc::ServerAsyncResponseWriter< EmptyResponse > reader;
+  grpc::ServerAsyncResponseWriter< EmptyResponse > responder_;
   grpc::Status status_{};
 
   delete_vector_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , reader( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestDeleteVector( &server_ctx_, &request_, &reader, cq_, cq_, this );
+    service_->RequestDeleteVector( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
     state_ = state::PROCESSED;
-    reader.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -411,14 +411,14 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
     if ( request_.collection_name().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      reader.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
     if ( request_.id_size() == 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector ID is required for deletion." );
-      reader.Finish( response_, status_, this );
+      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
       return;
     }
@@ -434,7 +434,7 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
             }
             auto _status = db_ptr_->delete_vectors( request_.collection_name(), _ids );
             status_ = status_to_grpc_status( _status );
-            reader.Finish( response_, status_, this );
+            responder_.Finish( response_, status_, this );
             state_ = state::PROCESSED;
           }
           catch ( std::exception& e )
@@ -448,20 +448,20 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
 
 struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexRequest, EmptyResponse >
 {
-  grpc::ServerAsyncResponseWriter< EmptyResponse > reader;
+  grpc::ServerAsyncResponseWriter< EmptyResponse > responder_;
   grpc::Status status_{};
 
   add_index_handler( vectorService::AsyncService* s, grpc::ServerCompletionQueue* q, database* db, worker_pool* pool )
       : rpc_base( s, q, db, pool )
-      , reader( &server_ctx_ )
+      , responder_( &server_ctx_ )
   {
-    service_->RequestAddIndex( &server_ctx_, &request_, &reader, cq_, cq_, this );
+    service_->RequestAddIndex( &server_ctx_, &request_, &responder_, cq_, cq_, this );
   }
 
   void handle_unknown_error() override
   {
     state_ = state::PROCESSED;
-    reader.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -473,6 +473,13 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
           {
             const auto collection_name = request_.collectionname();
             const auto index_name = request_.indexname();
+            if ( collection_name.empty() || index_name.empty() )
+            {
+              status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name and index name cannot be empty." );
+              responder_.Finish( response_, status_, this );
+              state_ = state::PROCESSED;
+              return;
+            }
             switch ( const auto index_type = request_.index(); index_type )
             {
               case vector_db::IndexType::HNSW:
@@ -489,7 +496,7 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
 
                 auto _status = db_ptr_->add_index( collection_name, index_name, index_type::hnsw, &hnsw_params );
                 status_ = status_to_grpc_status( _status );
-                reader.Finish( response_, status_, this );
+                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
                 break;
               }
@@ -507,13 +514,13 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
 
                 auto _status = db_ptr_->add_index( collection_name, index_name, index_type::ivf_flat, &ivf_params );
                 status_ = status_to_grpc_status( _status );
-                reader.Finish( response_, status_, this );
+                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
                 break;
               }
               default:
                 status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Unknown index type" );
-                reader.Finish( response_, status_, this );
+                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
                 break;
             }
@@ -607,7 +614,5 @@ void server::cq_poll_loop() const
     static_cast< rpc_facade* >( _tag )->run_flow( _ok, running_ == false );
   }
 }
-
-void server::attach() const { cq_poll_loop(); }
 
 }  // namespace vector_db

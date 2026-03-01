@@ -26,8 +26,6 @@ public:
 
   bool is_running() const { return running_; }
 
-  void attach() const;
-
 private:
   // Per-RPC handlers (CallData) manage their own lifetime
   struct create_collection_handler;
