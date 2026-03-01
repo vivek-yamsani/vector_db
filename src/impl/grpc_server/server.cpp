@@ -118,16 +118,16 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
     if ( request_.name().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
 
     if ( request_.dimension() <= 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Vector dimension must be greater than 0." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     db_worker_pool_->submit(
@@ -144,8 +144,8 @@ struct server::create_collection_handler : public rpc_base< create_collection_ha
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
           logger_->info< int >( "Create collection response: code {}", status_.error_code() );
-          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
+          responder_.Finish( response_, status_, this );
         } );
   }
 };
@@ -173,8 +173,8 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     db_worker_pool_->submit(
@@ -190,8 +190,8 @@ struct server::delete_collection_handler : public rpc_base< delete_collection_ha
             logger_->error( "Delete collection error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
-          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
+          responder_.Finish( response_, status_, this );
         } );
   }
 };
@@ -210,8 +210,8 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
 
   void handle_unknown_error() override
   {
-    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
     state_ = state::PROCESSED;
+    responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
   void process() override
@@ -219,15 +219,15 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     if ( request_.vectors_size() == 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector is required for upsert." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     db_worker_pool_->submit(
@@ -253,6 +253,7 @@ struct server::upsert_handler : public rpc_base< upsert_handler, UpsertRequest, 
             logger_->error( "Upsert error: {}", e.what() );
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
+          state_ = state::PROCESSED;
           responder_.Finish( response_, status_, this );
         } );
   }
@@ -272,6 +273,7 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
 
   void handle_unknown_error() override
   {
+    state_ = state::PROCESSED;
     responder_.Finish( response_, grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" ), this );
   }
 
@@ -280,15 +282,15 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
     if ( request_.collectionname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     if ( request_.top_k() <= 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "top_k must be greater than 0." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     db_worker_pool_->submit(
@@ -319,8 +321,8 @@ struct server::search_handler : public rpc_base< search_handler, SearchRequest, 
             status_ = grpc::Status( grpc::StatusCode::INTERNAL, "Internal error" );
           }
 
-          responder_.Finish( response_, status_, this );
           state_ = state::PROCESSED;
+          responder_.Finish( response_, status_, this );
         } );
   }
 };
@@ -341,8 +343,8 @@ struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, U
 
   void handle_unknown_error() override
   {
-    reader_.Finish( response_, status_, this );
     state_ = state::PROCESSED;
+    reader_.Finish( response_, status_, this );
   }
 
   bool do_read() override
@@ -373,8 +375,8 @@ struct server::stream_upsert_handler : public rpc_base< stream_upsert_handler, U
             status_ = status_to_grpc_status( _status );
             if ( _status != status::success )
             {
-              reader_.Finish( response_, status_, this );
               state_ = state::PROCESSED;
+              reader_.Finish( response_, status_, this );
             }
             else
             {
@@ -413,15 +415,17 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
     if ( request_.collection_name().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     if ( request_.id_size() == 0 )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "At least one vector ID is required for deletion." );
+      state_ = state::PROCESSED;
       responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
     db_worker_pool_->submit(
@@ -436,8 +440,8 @@ struct server::delete_vector_handler : public rpc_base< delete_vector_handler, D
             }
             auto _status = db_ptr_->delete_vectors( request_.collection_name(), _ids );
             status_ = status_to_grpc_status( _status );
-            responder_.Finish( response_, status_, this );
             state_ = state::PROCESSED;
+            responder_.Finish( response_, status_, this );
           }
           catch ( std::exception& e )
           {
@@ -478,8 +482,8 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
             if ( collection_name.empty() || index_name.empty() )
             {
               status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection name and index name cannot be empty." );
-              responder_.Finish( response_, status_, this );
               state_ = state::PROCESSED;
+              responder_.Finish( response_, status_, this );
               return;
             }
             switch ( const auto index_type = request_.index(); index_type )
@@ -498,8 +502,8 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
 
                 auto _status = db_ptr_->add_index( collection_name, index_name, index_type::hnsw, &hnsw_params );
                 status_ = status_to_grpc_status( _status );
-                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
+                responder_.Finish( response_, status_, this );
                 break;
               }
               case vector_db::IndexType::IVF_FLAT:
@@ -516,14 +520,14 @@ struct server::add_index_handler : public rpc_base< add_index_handler, AddIndexR
 
                 auto _status = db_ptr_->add_index( collection_name, index_name, index_type::ivf_flat, &ivf_params );
                 status_ = status_to_grpc_status( _status );
-                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
+                responder_.Finish( response_, status_, this );
                 break;
               }
               default:
                 status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Unknown index type" );
-                responder_.Finish( response_, status_, this );
                 state_ = state::PROCESSED;
+                responder_.Finish( response_, status_, this );
                 break;
             }
           }
@@ -559,8 +563,8 @@ struct server::get_index_handler : public rpc_base< get_index_handler, IndexPara
     if ( request_.collectionname().empty() || request_.indexname().empty() )
     {
       status_ = grpc::Status( grpc::StatusCode::INVALID_ARGUMENT, "Collection/Index name cannot be empty." );
-      responder_.Finish( response_, status_, this );
       state_ = state::PROCESSED;
+      responder_.Finish( response_, status_, this );
       return;
     }
 
@@ -604,8 +608,8 @@ struct server::get_index_handler : public rpc_base< get_index_handler, IndexPara
                 }
               }
             }
-            responder_.Finish( response_, status_, this );
             state_ = state::PROCESSED;
+            responder_.Finish( response_, status_, this );
           }
           catch ( std::exception& e )
           {
@@ -656,7 +660,8 @@ void server::start()
                      search_handler,
                      stream_upsert_handler,
                      delete_vector_handler,
-                     add_index_handler >();
+                     add_index_handler,
+                     get_index_handler >();
 
   // Start CQ polling thread
   logger_->info( "Starting {} Completion Queue worker threads", num_of_thread_ );
